@@ -12,7 +12,7 @@ from  config import *
 class Transactions_Generator:
     transaction_save_file_path = os.path.abspath(os.curdir)+'/datas/transactions.csv'
 
-    transaction_header = ['SENDER_ACCOUNT_ID', 'RECEIVER_ACCOUNT_ID', 'BALANCE', 'CONDITIONS']
+    transaction_header = ['TXN_ID', 'SENDER_ACCOUNT_ID', 'RECEIVER_ACCOUNT_ID', 'AMOUNT', 'CONDITIONS']
 
     latters = string.ascii_uppercase
 
@@ -35,8 +35,8 @@ class Transactions_Generator:
                 for con in range(NUMBER_OF_CONDITIONS):
                     single_account = data[random.randint(1,NUMBER_OF_ACCOUNTS)]
                     if con!=(NUMBER_OF_CONDITIONS-1):
-                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_ID]+CONDITION_HAS+single_account[ACCOUNT_INDEX_BALANCE]+CONDITION_AND
+                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_ID]+CONDITION_HAS+single_account[ACCOUNT_INDEX_AMOUNT]+CONDITION_AND
                     else:
-                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_ID]+CONDITION_HAS+single_account[ACCOUNT_INDEX_BALANCE]
-                data = [from_row[ACCOUNT_INDEX_ACCOUNT_ID], to_row[ACCOUNT_INDEX_ACCOUNT_ID],from_row[ACCOUNT_INDEX_BALANCE],conditions]
+                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_ID]+CONDITION_HAS+single_account[ACCOUNT_INDEX_AMOUNT]
+                data = ['TXN_'+str(lp),from_row[ACCOUNT_INDEX_ACCOUNT_ID], to_row[ACCOUNT_INDEX_ACCOUNT_ID],from_row[ACCOUNT_INDEX_AMOUNT],conditions]
                 writer.writerow(data)
