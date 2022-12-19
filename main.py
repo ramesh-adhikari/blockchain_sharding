@@ -9,4 +9,5 @@ if __name__ == '__main__':
     # generate transactios and add some constraints
     TransactionsGenerator()
     print("Hello World")
-    print(TransactionUtility.is_account_has_sufficient_amount('27_ZUO',200000))
+    TransactionUtility.assign_all_account_to_each_shards()
+    # print(TransactionUtility.is_account_has_sufficient_amount('27_ZUO',200))
