@@ -7,11 +7,11 @@ import random
 sys.path.append(os.path.abspath(os.curdir))
 from  config import *
 
-class Accounts_Generator:
+class AccountsGenerator:
     
-    account_save_file_path = os.path.abspath(os.curdir)+'/datas/accounts.csv'
+    account_save_file_path = os.path.abspath(os.curdir)+'/datas/GENERATED_ACCOUNTS.CSV'
 
-    account_header = ['ACCOUNT_ID', 'ACCOUNT_NAME', 'AMOUNT']
+    account_header = ['ACCOUNT_NUMBER', 'ACCOUNT_NAME', 'AMOUNT']
 
     latters = string.ascii_uppercase
 
@@ -19,7 +19,7 @@ class Accounts_Generator:
         writer = csv.writer(file)
         writer.writerow(account_header)
         
-        for lp in range(NUMBER_OF_ACCOUNTS):
+        for na in range(NUMBER_OF_ACCOUNTS):
             name = ''.join(random.choices(string.ascii_uppercase, k=3))
-            data = [str(lp)+'_'+name, name, DEFAULT_AMOUNT]
+            data = [str(na)+'_'+name, name, DEFAULT_AMOUNT]
             writer.writerow(data)

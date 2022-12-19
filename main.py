@@ -1,10 +1,12 @@
-from generator_scripts.accounts_generator import Accounts_Generator
-from generator_scripts.transactions_generator import Transactions_Generator
+from generator_scripts.accounts_generator import AccountsGenerator
+from generator_scripts.transactions_generator import TransactionsGenerator
+from transaction_utility import TransactionUtility
 
 
 if __name__ == '__main__':
     # generate account and assign default balance
-    Accounts_Generator()
+    AccountsGenerator()
     # generate transactios and add some constraints
-    Transactions_Generator()
+    TransactionsGenerator()
     print("Hello World")
+    print(TransactionUtility.is_account_has_sufficient_amount('27_ZUO',200000))
