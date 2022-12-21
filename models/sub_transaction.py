@@ -4,7 +4,7 @@ from models.shard import Shard
 
 class SubTransaction:
     def __init__(self, type: str, account_no: str, amount: int, shard: Shard) -> None:
-        self.type = type
+        self.type = type  # check or update
         self.account_no = account_no
         self.amount = amount
         self.shard = shard
@@ -52,7 +52,7 @@ def split_transaction_to_sub_transactions(transcation, shards):
         SubTransaction(
             "update",
             transcation["SENDER_ACCOUNT_ID"],
-            transcation["AMOUNT"],
+            transcation["AMOUNT"],  # implement negative
             get_shard_for_account(transcation["SENDER_ACCOUNT_ID"], shards)
         )
     )

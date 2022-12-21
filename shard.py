@@ -15,35 +15,50 @@ def process_transactions():
         if (shard.is_leader):
             print("Found leader shard", shard.id)
             for transaction in get_transactions_from_transaction_pool():
+                # each leader shard will have different transaction pool, safety & liveness should be considered
                 process_transaction(transaction)
 
 
 def process_transaction(transaction):
     print("Processing transaction ", transaction["TXN_ID"])
-    for mini_transaction in split_transaction_to_sub_transactions(transaction, shards):
-        print("Mini Transaction > ", mini_transaction)
-        if (mini_transaction.type == "check"):
-            success = check_balance(mini_transaction)
+    for sub_transaction in split_transaction_to_sub_transactions(transaction, shards):
+        # run "check" transactions in parallel
+        print("Sub-transaction > ", sub_transaction)
+        if (sub_transaction.type == "check"):
+            success = check_balance(sub_transaction)
             if not success:
-                print("Mini transaction failed > ", mini_transaction)
-                continue
+                print("Sub-transaction failed > ", sub_transaction)
+                return
 
-        elif (mini_transaction.type == "update"):
-            success = update_balance(mini_transaction)
+        elif (sub_transaction.type == "update"):
+            success = update_balance(sub_transaction)
             # TODO once leader shard receives confirmation about update_balance, commit transaction
+    print("Transaction completed successfully")
 
 
-def check_balance(mini_transaction):
-    print("Checking balance of account", mini_transaction.account_no,
-          "on shard", mini_transaction.shard.id)
+def check_balance(sub_transaction):
+    print("Checking balance of account", sub_transaction.account_no,
+          "on shard", sub_transaction.shard.id)
+    # leader shard -> related shard -> check balance (amount, account no)
+    # destination shard -> message recive, process, return
+    # leader shard catch message
+    # response true
     # checks balance of account on provided shard
     # this is dummy implementation of communication with shard
-    return False  # TODO replace with transaction util method check_balance
+    return True  # TODO replace with transaction util method check_balance
 
 
-def update_balance(mini_transaction):
-    print("Updating balance of account", mini_transaction.account_no,
-          "on shard", mini_transaction.shard.id)
+def receive_command(message):
+    print("A")
+    # message decode =>command
+    # command => check or update
+    # validation
+    # return response
+
+
+def update_balance(sub_transaction):
+    print("Updating balance of account", sub_transaction.account_no,
+          "on shard", sub_transaction.shard.id)
     # Updates balance of account  on provided shard
     # this is dummy implementation of communication with shard
     return True  # TODO replace with transaction util method update_balance
