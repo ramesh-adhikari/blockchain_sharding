@@ -1,0 +1,79 @@
+import csv
+import datetime
+import hashlib
+import os
+import sys
+import string
+import random
+
+from utility.shard import get_shard_for_account
+
+sys.path.append(os.path.abspath(os.curdir))
+from  config import *
+from utility.file import File
+
+class AccountsAndTransactionGenerator:
+    
+   
+    def create_tmp_accounts_file():
+        # this function create random accounts and save that accounts to file
+        tmp_account_save_file_path = '/storages/GENERATED_ACCOUNTS.CSV'
+        
+        for na in range(NUMBER_OF_ACCOUNTS):
+                name = ''.join(random.choices(string.ascii_uppercase, k=3))
+                data = [str(na)+'_'+name, name, DEFAULT_AMOUNT]
+                File.append_data(tmp_account_save_file_path,data)
+    
+
+   
+    def assign_accounts_to_shard():
+         # this function pick the accounts from tmp accounts file and assign to that accounts to shards
+        tmp_account_file_path ='/storages/GENERATED_ACCOUNTS.CSV'
+        dataReader = File.open_file(tmp_account_file_path)
+       
+        i=0
+        for account in dataReader:
+            account_number = account[ACCOUNT_INDEX_ACCOUNT_NUMBER]
+            
+            # skip header of csv file
+            if(account_number=='ACCOUNT_NUMBER'):
+                continue
+            
+            shard_id = get_shard_for_account(account_number)
+            shard_file_name = CONFIRMED_SHARD_NAME_PREFIX+str(shard_id)+'.CSV'
+            assign_account_to_shard_file_path = '/storages/transactions/confirmed/'+shard_file_name
+
+            data = ['TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),
+                    'SUB_TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+account[ACCOUNT_INDEX_ACCOUNT_NAME]).encode()).hexdigest(),
+                    account[ACCOUNT_INDEX_ACCOUNT_NUMBER],
+                    account[ACCOUNT_INDEX_ACCOUNT_NAME],
+                    account[ACCOUNT_INDEX_AMOUNT],
+                    datetime.datetime.now()]
+            File.append_data(assign_account_to_shard_file_path, data)
+            
+    
+    
+    def create_transaction_and_append_to_transaction_pool():
+        # this function create the transaction using accounts in tmp accounts file
+        # and append this created transaction to transactionpool
+        tmp_account_save_file_path = '/storages/GENERATED_ACCOUNTS.CSV'
+        for nt in range(NUMBER_OF_TRANSACTIONS):
+            
+                data = File.open_file(tmp_account_save_file_path)
+                random_upper_bound=NUMBER_OF_ACCOUNTS-1
+                from_row = data[random.randint(1,random_upper_bound)]
+                to_row = data[random.randint(1,random_upper_bound)]
+                conditions=''
+                for con in range(NUMBER_OF_CONDITIONS):
+                    single_account = data[random.randint(1,random_upper_bound)]
+                    if con!=(NUMBER_OF_CONDITIONS-1):
+                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+single_account[ACCOUNT_INDEX_AMOUNT]+CONDITION_AND
+                    else:
+                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+single_account[ACCOUNT_INDEX_AMOUNT]
+                data = ['TXN_'+hashlib.sha256((str(datetime.datetime.now())+single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),from_row[ACCOUNT_INDEX_ACCOUNT_NUMBER], to_row[ACCOUNT_INDEX_ACCOUNT_NUMBER],from_row[ACCOUNT_INDEX_AMOUNT],conditions,datetime.datetime.now()]
+                txn_pool_path = '/storages/transaction_pools/'+TRANSACTION_POOL_FOR_LEADER_NAME_PREFIX
+                txn_pool_file_name = txn_pool_path+str(random.randint(0,NUMBER_OF_LEADER_SHARD-1))+'.CSV'
+                File.append_data(txn_pool_file_name, data)
+    
+ 
+    
