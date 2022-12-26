@@ -40,8 +40,7 @@ class AccountsAndTransactionGenerator:
                 continue
             
             shard_id = get_shard_for_account(account_number)
-            shard_file_name = SHARD_NAME_PREFIX+str(shard_id)+'.CSV'
-            assign_account_to_shard_file_path = '/storages/transactions/confirmed/'+shard_file_name
+            assign_account_to_shard_file_path = '/storages/shards/'+str(shard_id)+'/transactions/confirmed/'+TRANSACTION_FILE_NAME
 
             data = ['TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),
                     'SUB_TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+account[ACCOUNT_INDEX_ACCOUNT_NAME]).encode()).hexdigest(),
@@ -71,8 +70,7 @@ class AccountsAndTransactionGenerator:
                     else:
                         conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+single_account[ACCOUNT_INDEX_AMOUNT]
                 data = ['TXN_'+hashlib.sha256((str(datetime.datetime.now())+single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),from_row[ACCOUNT_INDEX_ACCOUNT_NUMBER], to_row[ACCOUNT_INDEX_ACCOUNT_NUMBER],from_row[ACCOUNT_INDEX_AMOUNT],conditions,datetime.datetime.now()]
-                txn_pool_path = '/storages/transaction_pools/initial/'+SHARD_NAME_PREFIX
-                txn_pool_file_name = txn_pool_path+str(random.randint(0,NUMBER_OF_LEADER_SHARD-1))+'.CSV'
+                txn_pool_file_name = '/storages/shards/'+str(random.randint(0,NUMBER_OF_LEADER_SHARD-1))+'/transactions/pools/initial/'+TRANSACTION_FILE_NAME
                 File.append_data(txn_pool_file_name, data)
     
  

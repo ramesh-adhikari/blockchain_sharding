@@ -51,11 +51,11 @@ class File:
     
     def create_directory(dir_name):
         directory_path = os.path.abspath(os.curdir)+dir_name
-        print(directory_path)
         os.makedirs(os.path.dirname(directory_path), exist_ok=True)
     
     def remove_directory(dir_name):
         directory_path = os.path.abspath(os.curdir)+dir_name
-        shutil.rmtree(directory_path)
+        if(os.path.exists(directory_path)):
+            shutil.rmtree(directory_path)
 
     

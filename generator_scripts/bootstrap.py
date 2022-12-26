@@ -9,7 +9,6 @@ class Bootstrap:
         # this method do the following
         # remove existing files to make fresh transaction
         FilesGenerator.remove_storage_directory()
-        # FilesGenerator.remove_generated_files()
         FilesGenerator.create_storage_directory()
         # generate the transaction files, temporary account files, transaction pool file and set the header of each csv file
         # Generate the account file
