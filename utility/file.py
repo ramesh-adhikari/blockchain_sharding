@@ -1,6 +1,7 @@
 
 import csv
 import os
+import shutil
 
 import pandas as pd
 
@@ -48,4 +49,13 @@ class File:
     #     file_path = os.path.abspath(os.curdir)+relative_path
     #     return pd.read_csv(file_path, header=None)
     
+    def create_directory(dir_name):
+        directory_path = os.path.abspath(os.curdir)+dir_name
+        print(directory_path)
+        os.makedirs(os.path.dirname(directory_path), exist_ok=True)
+    
+    def remove_directory(dir_name):
+        directory_path = os.path.abspath(os.curdir)+dir_name
+        shutil.rmtree(directory_path)
+
     
