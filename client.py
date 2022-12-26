@@ -16,33 +16,50 @@ def init_client(s_id):
     client_socket.connect((host, port))
 
     while True:
-        response = client_socket.recv(1024).decode()
-        handle_response_from_server(response)
+        for response in decode_response_from_server(client_socket):
+            handle_response_from_server(response)
+
+
+def decode_response_from_server(client_socket):
+    response_list = client_socket.recv(1024).decode().split("***")
+    response_list.pop()
+    return response_list
 
 
 def handle_response_from_server(response):
     print("Client "+str(shard_id)+" received message : "+response)
     if (response == "send_shard_id"):
         send_message("shard_id_"+str(shard_id))
-    elif "__check__" in response:
-        account = response.split("__")
-        check_balance(account[0], account[2])
-    elif "__update__" in response:
-        account = response.split("__")
-        update_balance(account[0], account[2])
+    elif response.startswith("check__"):
+        check_balance(response)
+    elif response.startswith("update__"):
+        update_balance(response)
+    elif response.startswith("commit__"):
+        commit_transaction(response)
+    elif response.startswith("abort__"):
+        abort_transaction(response)
 
 
-def check_balance(account_no, amount):
-    print("Check balalnce : Account "+account_no+", Amount "+str(amount))
+def check_balance(response):
+    # TODO check balance here, send vote_abort if insufficient balance
+    send_message("vote_commit__"+response)
 
 
-def update_balance(account_no, amount):
-    print("Update balalnce : Account "+account_no+", Amount "+str(amount))
+def update_balance(response):
+    # TODO First check balance here, send vote_abort if insufficient balance else update balance and send vote_commit
+    send_message("vote_commit__"+response)
+
+
+def commit_transaction(response):
+    send_message("committed__"+response)  # TODO commit transction
+
+
+def abort_transaction(response):
+    send_message("aborted__"+response)  # TODO abort transction
 
 
 def send_message(message):
-    global client_socket
-    client_socket.send(message.encode())
+    client_socket.send((message+"***").encode())
 
 
 def close_socket():
