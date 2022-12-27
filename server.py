@@ -94,11 +94,11 @@ def send_commit_message_to_write_shards():
     global waiting_vote_count
     update_state(State.COMMITING)
     waiting_vote_count = 2  # TODO send commit message to all destination shards
-    for sub_transation in sub_transactions:
-        if (sub_transation.type == "update"):
+    for sub_transaction in sub_transactions:
+        if (sub_transaction.type == "update"):
             send_message_to_port(
-                convert_shard_id_to_connection_port(sub_transation.shard),
-                "commit__"+sub_transation.txn_id
+                convert_shard_id_to_connection_port(sub_transaction.shard),
+                "commit__"+sub_transaction.txn_id+"__"+sub_transaction.sub_txn_id
             )
 
 
@@ -106,11 +106,11 @@ def send_abort_message_to_write_shards():
     global waiting_vote_count
     update_state(State.ABORTING)
     waiting_vote_count = 2  # TODO send abort message to all destination shards
-    for sub_transation in sub_transactions:
-        if (sub_transation.type == "update"):
+    for sub_transaction in sub_transactions:
+        if (sub_transaction.type == "update"):
             send_message_to_port(
-                convert_shard_id_to_connection_port(sub_transation.shard),
-                "abort__"+sub_transation.txn_id
+                convert_shard_id_to_connection_port(sub_transaction.shard),
+                "abort__"+sub_transaction.txn_id+"__"+sub_transaction.sub_txn_id
             )
 
 
@@ -133,7 +133,7 @@ def process_transaction(transaction):
     update_state(State.PREPARING)
     waiting_vote_count = len(sub_transactions)
     for sub_transaction in sub_transactions:
-        Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,'acc name',sub_transaction.amount)
+        Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,sub_transaction.account_no.split('_')[1],sub_transaction.amount)
         time.sleep(100/1000)
         send_message_to_port(convert_shard_id_to_connection_port(
             sub_transaction.shard), sub_transaction.to_message())

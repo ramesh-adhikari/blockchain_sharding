@@ -40,7 +40,7 @@ class AccountsAndTransactionGenerator:
                 continue
             
             shard_id = get_shard_for_account(account_number)
-            assign_account_to_shard_file_path = '/storages/shards/'+str(shard_id)+'/transactions/confirmed/'+TRANSACTION_FILE_NAME
+            assign_account_to_shard_file_path = '/storages/shards/'+str(shard_id)+'/transactions/committed/'+TRANSACTION_FILE_NAME
             acc_generator = AccountsAndTransactionGenerator()
             data = acc_generator.get_account_row_data(account)
             File.append_data(assign_account_to_shard_file_path, data)
