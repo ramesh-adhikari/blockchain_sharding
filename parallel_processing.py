@@ -1,25 +1,32 @@
 import multiprocessing
 from client import init_client
-from config import NUMBER_OF_SHARDS
 from models.shard import Shard
 from server import init_server
 from shard import *
+from config import INITAIL_PORT
 
 
-def init_shard(shard: Shard):
-    if (shard.is_leader):
-        init_server()
-    else:
-        init_client(shard.id)
+processes = []
 
+def init_process(server,shard_id, port):
+    p = multiprocessing.Process(target=init_server if server else init_client, args=(shard_id,port,))
+    processes.append(p)
+    p.start()
+
+def init_clients(shards,port):
+    for shard in shards:
+        init_process(False,shard.id,port)
 
 if __name__ == '__main__':
-
-    processes = []
-    for shard in prepare_client_server_shards():
-        p = multiprocessing.Process(target=init_shard, args=(shard,))
-        processes.append(p)
-        p.start()
+    shards = generate_shards()
+    port = INITAIL_PORT
+    for shard in shards:
+        if(shard.is_leader):
+            init_process(True,shard.id,port)
+            init_clients(shards,port)
+            port += 1
 
     for process in processes:
         process.join()
+
+

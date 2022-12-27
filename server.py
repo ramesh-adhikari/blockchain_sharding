@@ -3,20 +3,18 @@ import random
 import socket
 from _thread import *
 import time
-from config import NUMBER_OF_SHARDS
+from config import HOST, MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR, SHARDS
 from models.state import State
 from models.sub_transaction import split_transaction_to_sub_transactions
 from models.transaction import Transaction
 
-
-host = '127.0.0.1'
-port = 8085
 
 connections = list()
 shards = {}
 waiting_vote_count = 0
 state: State = State.NONE
 sub_transactions = []
+shard_id = 0
 
 
 def multi_threaded_client(connection):
@@ -30,7 +28,7 @@ def multi_threaded_client(connection):
 
 
 def decode_response_from_client(connection):
-    response_list = connection.recv(1024).decode().split("***")
+    response_list = connection.recv(1024).decode().split(MESSAGE_SEPARATOR)
     response_list.pop()
     return response_list
 
@@ -93,54 +91,50 @@ def handle_aborted():
 def send_commit_message_to_write_shards():
     global waiting_vote_count
     update_state(State.COMMITING)
-    waiting_vote_count = 2  # TODO send commit message to all destination shards
-    for sub_transaction in sub_transactions:
-        if (sub_transaction.type == "update"):
-            send_message_to_port(
-                convert_shard_id_to_connection_port(sub_transaction.shard),
-                "commit__"+sub_transaction.txn_id+"__"+sub_transaction.sub_txn_id
-            )
+    waiting_vote_count = len(sub_transactions)
+    for sub_transation in sub_transactions:
+        send_message_to_port(
+            convert_shard_id_to_connection_port(sub_transation.shard),
+            "commit__"+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id
+        )
 
 
 def send_abort_message_to_write_shards():
     global waiting_vote_count
     update_state(State.ABORTING)
-    waiting_vote_count = 2  # TODO send abort message to all destination shards
-    for sub_transaction in sub_transactions:
-        if (sub_transaction.type == "update"):
-            send_message_to_port(
-                convert_shard_id_to_connection_port(sub_transaction.shard),
-                "abort__"+sub_transaction.txn_id+"__"+sub_transaction.sub_txn_id
-            )
+    waiting_vote_count = len(sub_transactions)
+    for sub_transation in sub_transactions:
+        send_message_to_port(
+            convert_shard_id_to_connection_port(sub_transation.shard),
+           "abort__"+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id
+        )
 
 
 def convert_shard_id_to_connection_port(shard_id):
     return shards[str(shard_id)]
 
 
-def process_next_transaction_in_new_thread():
+def process_next_transaction_in_new_thread(delay=20/1000):
     start_new_thread(
         process_transaction,
-        (Transaction.get_transactions_from_transaction_pool(0),) #TODO use server shard id
+        (Transaction.get_transactions_from_transaction_pool(shard_id),delay)
     )
 
 
-def process_transaction(transaction):
+def process_transaction(transaction,delay):
     global waiting_vote_count, sub_transactions
-    # test delay for better visibility of transaction delay
-    time.sleep(50/1000)
+    time.sleep(delay)
     sub_transactions = split_transaction_to_sub_transactions(transaction)
     update_state(State.PREPARING)
     waiting_vote_count = len(sub_transactions)
     for sub_transaction in sub_transactions:
         Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,sub_transaction.account_no.split('_')[1],sub_transaction.amount)
-        time.sleep(100/1000)
         send_message_to_port(convert_shard_id_to_connection_port(
             sub_transaction.shard), sub_transaction.to_message())
 
 
 def send_message_to_connection(connection, message):
-    connection.sendall(str.encode(message+"***"))
+    connection.sendall(str.encode(message+MESSAGE_SEPARATOR))
 
 
 def send_message_to_port(connection_port, message):
@@ -164,18 +158,19 @@ def update_state(_state: State):
     state = _state
 
 
-def init_server():
-
+def init_server(s_id,port):
+    global shard_id
+    shard_id = s_id
     server_socket = socket.socket()
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     try:
-        server_socket.bind((host, port))
+        server_socket.bind((HOST, port))
     except socket.error as e:
         print(str(e))
-    server_socket.listen(NUMBER_OF_SHARDS)
+    server_socket.listen(len(SHARDS))
 
-    process_next_transaction_in_new_thread()
+    process_next_transaction_in_new_thread(200/1000)
 
     while True:
         client_socket, address = server_socket.accept()
