@@ -84,4 +84,15 @@ def generate_shards():
 
 
 
-process_transactions()
+def prepare_client_server_shards():
+    updated_shards = []
+    if (len(shards) == 0):
+        generate_shards()
+    for shard in shards:
+        updated_shards.append(shard)
+        if (shard.is_leader):
+            updated_shards.append(Shard(shard.id, False))
+    return updated_shards
+
+
+# process_transactions()

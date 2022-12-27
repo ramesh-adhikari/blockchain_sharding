@@ -6,7 +6,7 @@ if __name__ == '__main__':
 
     print("Hello World")
 
-    # Bootstrap.run()
+    Bootstrap.run()
     #  storages->shards->01->transactions->confirm/temporary/pool
     # print(Transaction.get_transactions_from_transaction_pool(0))
     # Transaction.move_transaction_from_initial_to_temporary_pool(0,'TXN_1d7242005b207644bfb2d4613d2efb3b900861c2554fcab5cb92a4b731ca35c2')

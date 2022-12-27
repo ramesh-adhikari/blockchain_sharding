@@ -50,9 +50,10 @@ class Transaction:
             reader = csv.reader(f)
             row1 = next(reader)
             row2=next(reader)
+        Transaction().move_transaction_from_initial_to_temporary_pool(shard_id,row2[0])
         return row2
     
-    def move_transaction_from_initial_to_temporary_pool(shard_id, txn_id):
+    def move_transaction_from_initial_to_temporary_pool(self,shard_id, txn_id):
         source_file = '/storages/shards/'+str(shard_id)+'/transactions/pools/initial/'+TRANSACTION_FILE_NAME
         
         destination_file = '/storages/shards/'+str(shard_id)+'/transactions/pools/temporary/'+TRANSACTION_FILE_NAME
@@ -85,7 +86,7 @@ class Transaction:
         data_frame = pd.read_csv(shard_file_directory)
         # sum the amount associated with given account number
         account_amount = data_frame.loc[data_frame['ACCOUNT_NUMBER'] == account_number, 'AMOUNT'].sum()
-        if(account_amount>=amount):
+        if(int(account_amount)>=int(amount)):
             return True
         return False    
     

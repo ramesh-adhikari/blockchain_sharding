@@ -1,3 +1,6 @@
+from multiprocessing import Value
+
+
 NUMBER_OF_NODES = 100
 NUMBER_OF_SHARDS = 4
 NUMBER_OF_TRANSACTIONS = 1000
