@@ -68,13 +68,13 @@ def handle_vote_abort():
 
 
 def handle_committed():
-    global waiting_vote_count, state
+    global waiting_vote_count
     if (state == State.COMMITING):
         waiting_vote_count -= 1
         if (waiting_vote_count == 0):
             print(
                 "Commited message received from all parties, processing next transaction")
-            state = State.NONE
+            update_state(State.NONE)
             process_next_transaction_in_new_thread()
 
 
@@ -84,14 +84,14 @@ def handle_aborted():
         if (waiting_vote_count == 0):
             print(
                 "Aborted message received from all parties, processing next transaction")
-            state = State.NONE
+            update_state(State.NONE)
             process_next_transaction_in_new_thread()
 
 
 def send_commit_message_to_write_shards():
     global waiting_vote_count
     update_state(State.COMMITING)
-    waiting_vote_count = 2
+    waiting_vote_count = 2  # TODO send commit message to all destination shards
     for sub_transation in sub_transactions:
         if (sub_transation.type == "update"):
             send_message_to_port(
@@ -103,7 +103,7 @@ def send_commit_message_to_write_shards():
 def send_abort_message_to_write_shards():
     global waiting_vote_count
     update_state(State.ABORTING)
-    waiting_vote_count = 2
+    waiting_vote_count = 2  # TODO send abort message to all destination shards
     for sub_transation in sub_transactions:
         if (sub_transation.type == "update"):
             send_message_to_port(
