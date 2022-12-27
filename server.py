@@ -133,6 +133,7 @@ def process_transaction(transaction):
     update_state(State.PREPARING)
     waiting_vote_count = len(sub_transactions)
     for sub_transaction in sub_transactions:
+        Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,'acc name',sub_transaction.amount)
         time.sleep(100/1000)
         send_message_to_port(convert_shard_id_to_connection_port(
             sub_transaction.shard), sub_transaction.to_message())

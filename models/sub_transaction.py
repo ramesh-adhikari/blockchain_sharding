@@ -1,18 +1,20 @@
+import datetime
+import hashlib
 from config import CONDITION_AND, CONDITION_HAS, NUMBER_OF_SHARDS
 from models.shard import Shard
 
 
 class SubTransaction:
-    def __init__(self, txn_id: int, type: str, account_no: str, amount: int, shard: int) -> None:
+    def __init__(self, txn_id: int, type: str, account_no: str, amount: int, shard: int, sub_txn_id: str) -> None:
         self.txn_id = txn_id
         self.type = type  # check or update
         self.account_no = account_no
         self.amount = amount
         self.shard = shard
+        self.sub_txn_id = sub_txn_id
 
     def __str__(self):
-        return "TXN ID : "+str(self.txn_id)+", Type: "+self.type+", Account No: "+self.account_no+", Amount: "+str(self.amount)+", Shard: "+str(id)
-
+        return "TXN ID : "+str(self.txn_id)+", Type: "+self.type+", Account No: "+self.account_no+", Amount: "+str(self.amount)+", Shard: "+str(id)+"SUB_TXN_ID :"+str(self.sub_txn_id)
     def to_message(self):
         return (self.type+"__"+self.account_no+"__"+str(self.amount))
 
@@ -31,7 +33,8 @@ def split_transaction_to_sub_transactions(transcation):
                 "check",
                 condition[0],
                 condition[1],
-                get_shard_for_account(condition[0])
+                get_shard_for_account(condition[0]),
+                'SUB_TXN_'+hashlib.sha256((str(datetime.datetime.now())+condition[0]).encode()).hexdigest()
             )
         )
     # sub-transaction to update balance of receiver
@@ -41,7 +44,8 @@ def split_transaction_to_sub_transactions(transcation):
             "update",
             transcation[2],
             transcation[3],
-            get_shard_for_account(transcation[2])
+            get_shard_for_account(transcation[2]),
+            'SUB_TXN_'+hashlib.sha256((str(datetime.datetime.now())+transcation[2]).encode()).hexdigest()
         )
     )
     # sub-transaction to update balance of sender
@@ -52,7 +56,8 @@ def split_transaction_to_sub_transactions(transcation):
             "update",
             transcation[1],
             -abs(int(transcation[3])),
-            get_shard_for_account(transcation[1])
+            get_shard_for_account(transcation[1]),
+            'SUB_TXN_'+hashlib.sha256((str(datetime.datetime.now())+transcation[1]).encode()).hexdigest()
         )
     )
     return sub_transactions
