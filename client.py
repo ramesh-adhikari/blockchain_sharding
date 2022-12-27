@@ -58,9 +58,7 @@ def update_balance(response):
 
 
 def commit_transaction(response):
-    # command = response.split(MESSAGE_DATA_SEPARATOR)
-    print(response)
-    exit()
+    command = response.split(MESSAGE_DATA_SEPARATOR)
     Transaction.move_sub_transaction_to_committed_transaction(shard_id, command[2])
     # Transaction.move_transaction_from_temporary_to_committed_pool(shard_id, command[1])
     send_message("committed__"+response)  # TODO commit transction
