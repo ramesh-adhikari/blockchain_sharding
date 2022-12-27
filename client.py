@@ -1,21 +1,19 @@
 import socket
 import time
-from config import MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR
-from server import host, port
+from config import HOST, MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR
 from models.transaction import Transaction
 
 client_socket = None
-
 shard_id = 0
 
 
-def init_client(s_id):
+def init_client(s_id,port):
     time.sleep(50 / 1000)
     global client_socket, shard_id
     shard_id = s_id
 
     client_socket = socket.socket()
-    client_socket.connect((host, port))
+    client_socket.connect((HOST, port))
 
     while True:
         for response in decode_response_from_server(client_socket):

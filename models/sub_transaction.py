@@ -1,7 +1,7 @@
 import datetime
 import hashlib
 
-from config import CONDITION_AND, CONDITION_HAS, NUMBER_OF_SHARDS
+from config import CONDITION_AND, CONDITION_HAS, SHARDS
 from config import MESSAGE_DATA_SEPARATOR
 
 
@@ -66,4 +66,4 @@ def split_transaction_to_sub_transactions(transcation):
 
 
 def get_shard_for_account(account_no):
-    return int(account_no.rsplit('_', 1)[0]) % NUMBER_OF_SHARDS
+    return int(account_no.rsplit('_', 1)[0]) % len(SHARDS)

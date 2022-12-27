@@ -1,8 +1,8 @@
 from multiprocessing import Value
 
+SHARDS = [(0,True),(1,False),(2,False),(3,False)] #(id,is_leader)
 
 NUMBER_OF_NODES = 100
-NUMBER_OF_SHARDS = 4
 NUMBER_OF_TRANSACTIONS = 1000
 NUMBER_OF_ACCOUNTS = 150
 DEFAULT_AMOUNT = 2000
@@ -19,3 +19,7 @@ ACCOUNT_INDEX_AMOUNT=2
 
 MESSAGE_SEPARATOR = "***"
 MESSAGE_DATA_SEPARATOR = "___"
+
+
+HOST = '127.0.0.1'
+INITAIL_PORT = 8085

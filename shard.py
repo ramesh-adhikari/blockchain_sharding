@@ -1,4 +1,4 @@
-from config import NUMBER_OF_SHARDS
+from config import SHARDS
 from models.shard import Shard
 import csv
 
@@ -77,22 +77,8 @@ def get_transactions_from_transaction_pool():
 def generate_shards():
     print("Setting up shards")
     shards.clear()  # clearing existing shards
-    for i in range(0, NUMBER_OF_SHARDS):
-        # for now first shard is leader shard, later multiple shards will be leader shard
-        shards.append(Shard(i, i == 0))
+    for shard in SHARDS:
+        shards.append(Shard(shard[0], shard[1]))
     return shards
-
-
-
-def prepare_client_server_shards():
-    updated_shards = []
-    if (len(shards) == 0):
-        generate_shards()
-    for shard in shards:
-        updated_shards.append(shard)
-        if (shard.is_leader):
-            updated_shards.append(Shard(shard.id, False))
-    return updated_shards
-
 
 # process_transactions()

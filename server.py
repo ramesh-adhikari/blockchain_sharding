@@ -3,14 +3,11 @@ import random
 import socket
 from _thread import *
 import time
-from config import MESSAGE_SEPARATOR, NUMBER_OF_SHARDS
+from config import HOST, MESSAGE_SEPARATOR, SHARDS
 from models.state import State
 from models.sub_transaction import split_transaction_to_sub_transactions
 from models.transaction import Transaction
 
-
-host = '127.0.0.1'
-port = 8085
 
 connections = list()
 shards = {}
@@ -117,23 +114,21 @@ def convert_shard_id_to_connection_port(shard_id):
     return shards[str(shard_id)]
 
 
-def process_next_transaction_in_new_thread():
+def process_next_transaction_in_new_thread(delay=20/1000):
     start_new_thread(
         process_transaction,
-        (Transaction.get_transactions_from_transaction_pool(shard_id),)
+        (Transaction.get_transactions_from_transaction_pool(shard_id),delay)
     )
 
 
-def process_transaction(transaction):
+def process_transaction(transaction,delay):
     global waiting_vote_count, sub_transactions
-    # test delay for better visibility of transaction delay
-    time.sleep(50/1000)
+    time.sleep(delay)
     sub_transactions = split_transaction_to_sub_transactions(transaction)
     update_state(State.PREPARING)
     waiting_vote_count = len(sub_transactions)
     for sub_transaction in sub_transactions:
         Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,'acc name',sub_transaction.amount)
-        time.sleep(100/1000)
         send_message_to_port(convert_shard_id_to_connection_port(
             sub_transaction.shard), sub_transaction.to_message())
 
@@ -163,19 +158,19 @@ def update_state(_state: State):
     state = _state
 
 
-def init_server(s_id):
+def init_server(s_id,port):
     global shard_id
     shard_id = s_id
     server_socket = socket.socket()
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     try:
-        server_socket.bind((host, port))
+        server_socket.bind((HOST, port))
     except socket.error as e:
         print(str(e))
-    server_socket.listen(NUMBER_OF_SHARDS)
+    server_socket.listen(len(SHARDS))
 
-    process_next_transaction_in_new_thread()
+    process_next_transaction_in_new_thread(200/1000)
 
     while True:
         client_socket, address = server_socket.accept()
