@@ -11,15 +11,7 @@ from utility.file import File
 
 class Transaction:
     
-    # def __init__(self, txn_id, sender, receiver, amount, type):
-    #     self.txn_id = txn_id
-    #     self.sender = sender
-    #     self.receiver = receiver
-    #     self.amount = amount
-    #     self.type = type #pending transaction or commiting transaction
-        
-        # shard_id, sub_txn_id
-    def append_temporary_transaction(account_number, account_name, txn_id, sub_txn_id, amount):
+    def append_sub_transaction_to_temporary_file(txn_id, sub_txn_id, account_number, account_name, amount):
         shard_id = get_shard_for_account(account_number)
         shard_file_path = '/storages/shards/'+str(shard_id)+'/transactions/temporary/'+TRANSACTION_FILE_NAME
         timestamp = datetime.datetime.now()
@@ -27,13 +19,13 @@ class Transaction:
         File.append_data(shard_file_path, data)
         
         
-    def commit_transaction(shard_id, txn_id):
+    def move_sub_transaction_to_confirmed_transaction(shard_id, sub_txn_id):
         # move pending transaction to confirm transaction
         print('move pending transaction to confirm transaction')
         source_file = '/storages/shards/'+str(shard_id)+'/transactions/temporary/'+TRANSACTION_FILE_NAME
         destination_file = '/storages/shards/'+str(shard_id)+'/transactions/confirmed/'+TRANSACTION_FILE_NAME
         transaction = Transaction()
-        transaction.move_transaction(source_file, destination_file, txn_id, 'TRANSACTION')
+        transaction.move_transaction(source_file, destination_file, sub_txn_id, 'TRANSACTION')
         
     
     def get_transactions_from_transaction_pool(shard_id):
@@ -93,15 +85,22 @@ class Transaction:
     def move_transaction(self, source_file, destination_file, txn_id, type='TRANSACTION_POOL'):
         source_file = source_file
         destination_file = destination_file
-        
         transaction = pd.read_csv(os.path.abspath(os.curdir)+source_file)
-        selected_rows = transaction.loc[transaction['TXN_ID'] == txn_id]
+
+        if(type=='TRANSACTION'):
+            selected_rows = transaction.loc[transaction['SUB_TXN_ID'] == txn_id]
+        else:
+            selected_rows = transaction.loc[transaction['TXN_ID'] == txn_id]
         t_instance = Transaction()
         move_data = t_instance.get_move_data(selected_rows, type)
         File.append_data(destination_file,move_data)
         
         # delete row from temporary
-        t_instance.delete_row_by_txn_id(source_file,selected_rows['TXN_ID'][0])
+        if(type=='TRANSACTION'):
+            t_instance.delete_row_by_txn_id(source_file,selected_rows['SUB_TXN_ID'][0], type)
+        else:
+            t_instance.delete_row_by_txn_id(source_file,selected_rows['TXN_ID'][0], type)
+
         
     def get_move_data(self, row, type):
         if(type=='TRANSACTION_POOL'):
@@ -121,8 +120,13 @@ class Transaction:
                      row['TIMESTAMP'][0]
                      ]
     
-    def delete_row_by_txn_id(self, file_path, txn_id):
+    def delete_row_by_txn_id(self, file_path, txn_id, type):
         abs_file_path = os.path.abspath(os.curdir)+file_path
         transaction = pd.read_csv(abs_file_path)
-        transaction.drop(transaction.index[(transaction["TXN_ID"] == txn_id)],axis=0,inplace=True)
+
+        if(type=='TRANSACTION'):
+            transaction.drop(transaction.index[(transaction["SUB_TXN_ID"] == txn_id)],axis=0,inplace=True)
+        else:
+            transaction.drop(transaction.index[(transaction["TXN_ID"] == txn_id)],axis=0,inplace=True)
+
         transaction.to_csv(abs_file_path,index=False)
