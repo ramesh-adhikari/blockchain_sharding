@@ -1,6 +1,7 @@
 import socket
 import time
 from server import host, port
+from models.transaction import Transaction
 
 client_socket = None
 
@@ -41,12 +42,19 @@ def handle_response_from_server(response):
 
 
 def check_balance(response):
-    # TODO check balance here, send vote_abort if insufficient balance
-    send_message("vote_commit__"+response)
+    command = response.split("__")
+    success = Transaction.has_amount(command[1],command[2])
+    if success:
+        send_message("vote_commit__"+response)
+    else:
+        send_message("vote_abort__"+response)
 
 
 def update_balance(response):
-    # TODO First check balance here, send vote_abort if insufficient balance else update balance and send vote_commit
+    command = response.split("__")
+    success = Transaction.has_amount(command[1],command[2]) #TODO implement update call
+    # if success: 
+    #     Transaction.append_temporary_transaction()
     send_message("vote_commit__"+response)
 
 

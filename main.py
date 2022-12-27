@@ -1,10 +1,15 @@
-from generator_scripts.accounts_generator import Accounts_Generator
-from generator_scripts.transactions_generator import Transactions_Generator
 
+from generator_scripts.bootstrap import Bootstrap
+from models.transaction import Transaction
 
 if __name__ == '__main__':
-    # generate account and assign default balance
-    Accounts_Generator()
-    # generate transactios and add some constraints
-    Transactions_Generator()
+
     print("Hello World")
+
+    Bootstrap.run()
+    #  storages->shards->01->transactions->confirm/temporary/pool
+    # print(Transaction.get_transactions_from_transaction_pool(0))
+    # Transaction.move_transaction_from_initial_to_temporary_pool(0,'TXN_1d7242005b207644bfb2d4613d2efb3b900861c2554fcab5cb92a4b731ca35c2')
+    # Transaction.move_transaction_from_temporary_to_abort_pool(0,'TXN_1d7242005b207644bfb2d4613d2efb3b900861c2554fcab5cb92a4b731ca35c2')
+    # Transaction.remove_transaction_from_temporary_pool(0,'TXN_8b2dae0475134a9c77ef101fda03f18cbcad1b83902636d9604ebf83c3325552')
+    

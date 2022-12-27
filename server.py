@@ -6,6 +6,7 @@ import time
 from config import NUMBER_OF_SHARDS
 from models.state import State
 from models.sub_transaction import split_transaction_to_sub_transactions
+from models.transaction import Transaction
 
 
 host = '127.0.0.1'
@@ -79,6 +80,7 @@ def handle_committed():
 
 
 def handle_aborted():
+    global waiting_vote_count
     if (state == State.ABORTING):
         waiting_vote_count -= 1
         if (waiting_vote_count == 0):
@@ -119,7 +121,7 @@ def convert_shard_id_to_connection_port(shard_id):
 def process_next_transaction_in_new_thread():
     start_new_thread(
         process_transaction,
-        (pick_transaction_from_transaction_pool(),)
+        (Transaction.get_transactions_from_transaction_pool(0),) #TODO use server shard id
     )
 
 
@@ -134,18 +136,6 @@ def process_transaction(transaction):
         time.sleep(100/1000)
         send_message_to_port(convert_shard_id_to_connection_port(
             sub_transaction.shard), sub_transaction.to_message())
-
-
-# dummy implementation of pick transaction, this should be replaced by method returning next transaction to be processed
-def pick_transaction_from_transaction_pool():
-    data = []
-    with open('datas/transactions.csv', encoding='utf-8') as csvf:
-        csvReader = csv.DictReader(csvf)
-        for row in csvReader:
-            data.append(row)
-            if (len(data) > 10):
-                break
-    return random.choice(data)
 
 
 def send_message_to_connection(connection, message):

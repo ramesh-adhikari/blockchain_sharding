@@ -14,15 +14,15 @@ class SubTransaction:
         return "TXN ID : "+str(self.txn_id)+", Type: "+self.type+", Account No: "+self.account_no+", Amount: "+str(self.amount)+", Shard: "+str(id)
 
     def to_message(self):
-        return (self.type+"__"+self.account_no+"__"+self.amount)
+        return (self.type+"__"+self.account_no+"__"+str(self.amount))
 
 
 def split_transaction_to_sub_transactions(transcation):
 
-    transcation_id = transcation["TXN_ID"]
+    transcation_id = transcation[0]
     sub_transactions = []
 
-    for condition in transcation["CONDITIONS"].split(CONDITION_AND):
+    for condition in transcation[4].split(CONDITION_AND):
         condition = condition.split(CONDITION_HAS)
         # sub-transaction to check condition
         sub_transactions.append(
@@ -39,19 +39,20 @@ def split_transaction_to_sub_transactions(transcation):
         SubTransaction(
             transcation_id,
             "update",
-            transcation["RECEIVER_ACCOUNT_ID"],
-            transcation["AMOUNT"],
-            get_shard_for_account(transcation["RECEIVER_ACCOUNT_ID"])
+            transcation[2],
+            transcation[3],
+            get_shard_for_account(transcation[2])
         )
     )
     # sub-transaction to update balance of sender
+    print(" ====== sdjkfjknsdjkfslnfsdknjf "+str(transcation[3]))
     sub_transactions.append(
         SubTransaction(
             transcation_id,
             "update",
-            transcation["SENDER_ACCOUNT_ID"],
-            transcation["AMOUNT"] * -1,
-            get_shard_for_account(transcation["SENDER_ACCOUNT_ID"])
+            transcation[1],
+            -abs(int(transcation[3])),
+            get_shard_for_account(transcation[1])
         )
     )
     return sub_transactions

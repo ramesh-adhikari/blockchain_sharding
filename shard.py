@@ -67,7 +67,7 @@ def update_balance(sub_transaction):
 def get_transactions_from_transaction_pool():
     # Currently there is single leader shard, so returning all transactions from pool, later transactions will be divided between leader shard in some basis [TBD]
     data = []
-    with open('datas/transactions.csv', encoding='utf-8') as csvf:
+    with open('datas/GENERATED_TRANSACTIONS.CSV', encoding='utf-8') as csvf:
         csvReader = csv.DictReader(csvf)
         for row in csvReader:
             data.append(row)
@@ -81,6 +81,7 @@ def generate_shards():
         # for now first shard is leader shard, later multiple shards will be leader shard
         shards.append(Shard(i, i == 0))
     return shards
+
 
 
 def prepare_client_server_shards():
