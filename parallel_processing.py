@@ -8,7 +8,7 @@ from shard import *
 
 def init_shard(shard: Shard):
     if (shard.is_leader):
-        init_server()
+        init_server(shard.id)
     else:
         init_client(shard.id)
 

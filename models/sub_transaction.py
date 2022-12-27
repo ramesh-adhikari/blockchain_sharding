@@ -1,4 +1,4 @@
-from config import CONDITION_AND, CONDITION_HAS, NUMBER_OF_SHARDS
+from config import CONDITION_AND, CONDITION_HAS, MESSAGE_DATA_SEPARATOR, NUMBER_OF_SHARDS
 from models.shard import Shard
 
 
@@ -14,7 +14,7 @@ class SubTransaction:
         return "TXN ID : "+str(self.txn_id)+", Type: "+self.type+", Account No: "+self.account_no+", Amount: "+str(self.amount)+", Shard: "+str(id)
 
     def to_message(self):
-        return (self.type+"__"+self.account_no+"__"+str(self.amount))
+        return (self.type+MESSAGE_DATA_SEPARATOR+self.account_no+MESSAGE_DATA_SEPARATOR+str(self.amount))
 
 
 def split_transaction_to_sub_transactions(transcation):
@@ -45,7 +45,6 @@ def split_transaction_to_sub_transactions(transcation):
         )
     )
     # sub-transaction to update balance of sender
-    print(" ====== sdjkfjknsdjkfslnfsdknjf "+str(transcation[3]))
     sub_transactions.append(
         SubTransaction(
             transcation_id,

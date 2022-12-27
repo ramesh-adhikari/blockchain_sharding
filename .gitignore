@@ -48,3 +48,5 @@ dist/**
 *.i18n.json
 
 .idea
+
+storages

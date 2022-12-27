@@ -1,5 +1,6 @@
 import socket
 import time
+from config import MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR
 from server import host, port
 from models.transaction import Transaction
 
@@ -22,7 +23,7 @@ def init_client(s_id):
 
 
 def decode_response_from_server(client_socket):
-    response_list = client_socket.recv(1024).decode().split("***")
+    response_list = client_socket.recv(1024).decode().split(MESSAGE_SEPARATOR)
     response_list.pop()
     return response_list
 
@@ -31,18 +32,18 @@ def handle_response_from_server(response):
     print("Client "+str(shard_id)+" received message : "+response)
     if (response == "send_shard_id"):
         send_message("shard_id_"+str(shard_id))
-    elif response.startswith("check__"):
+    elif response.startswith("check"):
         check_balance(response)
-    elif response.startswith("update__"):
+    elif response.startswith("update"):
         update_balance(response)
-    elif response.startswith("commit__"):
+    elif response.startswith("commit"):
         commit_transaction(response)
-    elif response.startswith("abort__"):
+    elif response.startswith("abort"):
         abort_transaction(response)
 
 
 def check_balance(response):
-    command = response.split("__")
+    command = response.split(MESSAGE_DATA_SEPARATOR)
     success = Transaction.has_amount(command[1],command[2])
     if success:
         send_message("vote_commit__"+response)
@@ -51,7 +52,7 @@ def check_balance(response):
 
 
 def update_balance(response):
-    command = response.split("__")
+    command = response.split(MESSAGE_DATA_SEPARATOR)
     success = Transaction.has_amount(command[1],command[2]) #TODO implement update call
     # if success: 
     #     Transaction.append_temporary_transaction()
@@ -67,7 +68,7 @@ def abort_transaction(response):
 
 
 def send_message(message):
-    client_socket.send((message+"***").encode())
+    client_socket.send((message+MESSAGE_SEPARATOR).encode())
 
 
 def close_socket():

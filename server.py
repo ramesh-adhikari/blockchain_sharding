@@ -3,7 +3,7 @@ import random
 import socket
 from _thread import *
 import time
-from config import NUMBER_OF_SHARDS
+from config import MESSAGE_SEPARATOR, NUMBER_OF_SHARDS
 from models.state import State
 from models.sub_transaction import split_transaction_to_sub_transactions
 from models.transaction import Transaction
@@ -17,6 +17,7 @@ shards = {}
 waiting_vote_count = 0
 state: State = State.NONE
 sub_transactions = []
+shard_id = 0
 
 
 def multi_threaded_client(connection):
@@ -30,7 +31,7 @@ def multi_threaded_client(connection):
 
 
 def decode_response_from_client(connection):
-    response_list = connection.recv(1024).decode().split("***")
+    response_list = connection.recv(1024).decode().split(MESSAGE_SEPARATOR)
     response_list.pop()
     return response_list
 
@@ -93,25 +94,23 @@ def handle_aborted():
 def send_commit_message_to_write_shards():
     global waiting_vote_count
     update_state(State.COMMITING)
-    waiting_vote_count = 2  # TODO send commit message to all destination shards
+    waiting_vote_count = len(sub_transactions)
     for sub_transation in sub_transactions:
-        if (sub_transation.type == "update"):
-            send_message_to_port(
-                convert_shard_id_to_connection_port(sub_transation.shard),
-                "commit__"+sub_transation.txn_id
-            )
+        send_message_to_port(
+            convert_shard_id_to_connection_port(sub_transation.shard),
+            "commit__"+sub_transation.txn_id
+        )
 
 
 def send_abort_message_to_write_shards():
     global waiting_vote_count
     update_state(State.ABORTING)
-    waiting_vote_count = 2  # TODO send abort message to all destination shards
+    waiting_vote_count = len(sub_transactions)
     for sub_transation in sub_transactions:
-        if (sub_transation.type == "update"):
-            send_message_to_port(
-                convert_shard_id_to_connection_port(sub_transation.shard),
-                "abort__"+sub_transation.txn_id
-            )
+        send_message_to_port(
+            convert_shard_id_to_connection_port(sub_transation.shard),
+            "abort__"+sub_transation.txn_id
+        )
 
 
 def convert_shard_id_to_connection_port(shard_id):
@@ -121,7 +120,7 @@ def convert_shard_id_to_connection_port(shard_id):
 def process_next_transaction_in_new_thread():
     start_new_thread(
         process_transaction,
-        (Transaction.get_transactions_from_transaction_pool(0),) #TODO use server shard id
+        (Transaction.get_transactions_from_transaction_pool(shard_id),)
     )
 
 
@@ -139,7 +138,7 @@ def process_transaction(transaction):
 
 
 def send_message_to_connection(connection, message):
-    connection.sendall(str.encode(message+"***"))
+    connection.sendall(str.encode(message+MESSAGE_SEPARATOR))
 
 
 def send_message_to_port(connection_port, message):
@@ -163,8 +162,9 @@ def update_state(_state: State):
     state = _state
 
 
-def init_server():
-
+def init_server(s_id):
+    global shard_id
+    shard_id = s_id
     server_socket = socket.socket()
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
