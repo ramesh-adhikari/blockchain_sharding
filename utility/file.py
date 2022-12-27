@@ -31,10 +31,6 @@ class File:
         with open(file_path, 'r') as r_file:
             return  csv.reader(r_file)
         
-    
-    def move_row(soirce_path, destination_path):
-        print('move file')
-        
     def remove_file(relative_path):
         file_path = os.path.abspath(os.curdir)+relative_path
         if(os.path.exists(file_path) and os.path.isfile(file_path)):
@@ -45,10 +41,6 @@ class File:
         for f in os.listdir(dir_path):
             os.remove(os.path.join(dir_path, f))
     
-    # def open_file_without_header(relative_path):
-    #     file_path = os.path.abspath(os.curdir)+relative_path
-    #     return pd.read_csv(file_path, header=None)
-    
     def create_directory(dir_name):
         directory_path = os.path.abspath(os.curdir)+dir_name
         os.makedirs(os.path.dirname(directory_path), exist_ok=True)
@@ -57,5 +49,7 @@ class File:
         directory_path = os.path.abspath(os.curdir)+dir_name
         if(os.path.exists(directory_path)):
             shutil.rmtree(directory_path)
+    
+
 
     

@@ -41,13 +41,8 @@ class AccountsAndTransactionGenerator:
             
             shard_id = get_shard_for_account(account_number)
             assign_account_to_shard_file_path = '/storages/shards/'+str(shard_id)+'/transactions/confirmed/'+TRANSACTION_FILE_NAME
-
-            data = ['TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),
-                    'SUB_TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+account[ACCOUNT_INDEX_ACCOUNT_NAME]).encode()).hexdigest(),
-                    account[ACCOUNT_INDEX_ACCOUNT_NUMBER],
-                    account[ACCOUNT_INDEX_ACCOUNT_NAME],
-                    account[ACCOUNT_INDEX_AMOUNT],
-                    datetime.datetime.now()]
+            acc_generator = AccountsAndTransactionGenerator()
+            data = acc_generator.get_account_row_data(account)
             File.append_data(assign_account_to_shard_file_path, data)
             
     
@@ -74,4 +69,14 @@ class AccountsAndTransactionGenerator:
                 File.append_data(txn_pool_file_name, data)
     
  
+    def get_account_row_data(self,account):
+        data = [   
+                    'TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),
+                    'SUB_TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+account[ACCOUNT_INDEX_ACCOUNT_NAME]).encode()).hexdigest(),
+                    account[ACCOUNT_INDEX_ACCOUNT_NUMBER],
+                    account[ACCOUNT_INDEX_ACCOUNT_NAME],
+                    account[ACCOUNT_INDEX_AMOUNT],
+                    datetime.datetime.now()
+                ]
+        return data
     
