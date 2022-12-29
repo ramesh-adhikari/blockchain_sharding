@@ -6,6 +6,7 @@ import os
 import sys
 import string
 import random
+from random import randrange
 
 from utility.shard import get_shard_for_account
 
@@ -74,16 +75,13 @@ class AccountsAndTransactionGenerator:
                 for con in range(NUMBER_OF_CONDITIONS):
                     single_account = data[random.randint(1,random_upper_bound)]
                     if con!=(NUMBER_OF_CONDITIONS-1):
-                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+single_account[ACCOUNT_INDEX_AMOUNT]+CONDITION_AND
+                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+str(randrange(int(single_account[ACCOUNT_INDEX_AMOUNT])))+CONDITION_AND
                     else:
-                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+single_account[ACCOUNT_INDEX_AMOUNT]
-                data = ['TXN_'+hashlib.sha256((str(datetime.datetime.now())+single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),from_row[ACCOUNT_INDEX_ACCOUNT_NUMBER], to_row[ACCOUNT_INDEX_ACCOUNT_NUMBER],from_row[ACCOUNT_INDEX_AMOUNT],conditions,datetime.datetime.now()]
+                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+str(randrange(int(single_account[ACCOUNT_INDEX_AMOUNT])))
+                data = ['TXN_'+hashlib.sha256((str(datetime.datetime.now())+single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),from_row[ACCOUNT_INDEX_ACCOUNT_NUMBER], to_row[ACCOUNT_INDEX_ACCOUNT_NUMBER],str(randrange(int(from_row[ACCOUNT_INDEX_AMOUNT]))),conditions,datetime.datetime.now()]
                 txn_pool_file_name = '/storages/shards/'+str(shard_id)+'/transactions/pools/initial/'+TRANSACTION_FILE_NAME
                 File.append_data(txn_pool_file_name, data)
-    
- 
-   
-    
+                
 
     def create_transaction_and_append_to_transaction_pool():
         process_list = []
