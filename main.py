@@ -1,6 +1,8 @@
 
+import os
 import time
 from generator_scripts.bootstrap import Bootstrap
+from logger import generate_log
 from models.transaction import Transaction
 import sys
 import multiprocessing
@@ -35,28 +37,20 @@ def init_clients(shards,port):
 
 if __name__ == '__main__':
 
-    starttime = time.time()
+    start_time = time.time()
 
     if (len( sys.argv ) > 1):
         print("Erase old transactions and generate new transactions and process these transactions")
         Bootstrap.run()
         parallel_transactions_processing()
     else:
-        print('Start processing existing transactions!')
-        parallel_transactions_processing()
-    
-    total_number_of_leader=0
-    for shard in SHARDS:
-        if(shard[1]):
-            total_number_of_leader = total_number_of_leader+1
+        if(os.path.exists(os.path.abspath(os.curdir)+'/storages')):
+            print('Start processing existing transactions!')
+            parallel_transactions_processing()
+        else:
+            print('Transactions and storages not found please run the command with extra parameters like: "python3 main.py storage"')
+            exit()
 
-    total_number_of_transaction = NUMBER_OF_TRANSACTIONS_IN_EACH_TRANSACTION_POOL*total_number_of_leader
-    print("Total Number of Shards : " +str(len(SHARDS)) 
-        + " Total Number of Leader Shards : "+str(total_number_of_leader)
-        + " Total Transaction : " +str(total_number_of_transaction)
-        + " Total Number of Subtransactions : " +str(total_number_of_transaction*(NUMBER_OF_CONDITIONS+1))
-        + " Total Accounts : " +str(NUMBER_OF_ACCOUNTS)
-        + " Conditions per transactions : " +str((NUMBER_OF_CONDITIONS+1))
-    )
-    print("To process total transaction with it took {} seconds".format(time.time() - starttime))
+    generate_log(start_time)
+
 
