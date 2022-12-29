@@ -1,15 +1,62 @@
 
+import time
 from generator_scripts.bootstrap import Bootstrap
 from models.transaction import Transaction
+import sys
+import multiprocessing
+from client import init_client
+from models.shard import Shard
+from server import init_server
+from shard import *
+from config import *
+
+processes = []
+
+def parallel_transactions_processing():
+    shards = generate_shards()
+    port = INITAIL_PORT
+    for shard in shards:
+        if(shard.is_leader):
+            init_process(True,shard.id,port) #server
+            init_clients(shards,port)
+            port += 1
+
+    for process in processes:
+        process.join()
+
+def init_process(server,shard_id, port):
+    p = multiprocessing.Process(target=init_server if server else init_client, args=(shard_id,port,))
+    processes.append(p)
+    p.start()
+
+def init_clients(shards,port):
+    for shard in shards:
+        init_process(False,shard.id,port) #client
 
 if __name__ == '__main__':
 
-    Bootstrap.run()
-    #  storages->shards->01->transactions->confirm/temporary/pool
-    # print(Transaction.get_transactions_from_transaction_pool(0))
-    # Transaction.move_transaction_from_initial_to_temporary_pool(0,'TXN_1d7242005b207644bfb2d4613d2efb3b900861c2554fcab5cb92a4b731ca35c2')
-    # Transaction.move_transaction_from_temporary_to_abort_pool(0,'TXN_fadb11b575c8f48c6b8a3be49086eda55f3fb7670d24e922c7653f9946fdccb3')
-    # Transaction.remove_transaction_from_temporary_pool(0,'TXN_8b2dae0475134a9c77ef101fda03f18cbcad1b83902636d9604ebf83c3325552')
-    # Transaction.append_sub_transaction_to_temporary_file('TXN_7aae3a94427c56d0a029f29f8fcac23c143a25a9fac1c058c30674a17a023321','sub_trxn_1','43_WVJ','ramesh',100)
-    # Transaction.move_sub_transaction_to_confirmed_transaction(3,'sub_trxn_1')
-    # Transaction.move_sub_transaction_to_committed_transaction('0','SUB_TXN_e129e95e39a982d9dc5e3b52839e34a225b5fc39b5375571a994304ef49f5424')
+    starttime = time.time()
+
+    if (len( sys.argv ) > 1):
+        print("Erase old transactions and generate new transactions and process these transactions")
+        Bootstrap.run()
+        parallel_transactions_processing()
+    else:
+        print('Start processing existing transactions!')
+        parallel_transactions_processing()
+    
+    total_number_of_leader=0
+    for shard in SHARDS:
+        if(shard[1]):
+            total_number_of_leader = total_number_of_leader+1
+
+    total_number_of_transaction = NUMBER_OF_TRANSACTIONS_IN_EACH_TRANSACTION_POOL*total_number_of_leader
+    print("Total Number of Shards : " +str(len(SHARDS)) 
+        + " Total Number of Leader Shards : "+str(total_number_of_leader)
+        + " Total Transaction : " +str(total_number_of_transaction)
+        + " Total Number of Subtransactions : " +str(total_number_of_transaction*(NUMBER_OF_CONDITIONS+1))
+        + " Total Accounts : " +str(NUMBER_OF_ACCOUNTS)
+        + " Conditions per transactions : " +str((NUMBER_OF_CONDITIONS+1))
+    )
+    print("To process total transaction with it took {} seconds".format(time.time() - starttime))
+
