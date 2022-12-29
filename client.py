@@ -53,15 +53,21 @@ def update_balance(response):
     command = response.split(MESSAGE_DATA_SEPARATOR)
     success = Transaction.has_amount(command[1],command[2]) #TODO implement update call
     # if success: 
-    #     Transaction.append_temporary_transaction()
-    send_message("vote_commit__"+response)
+        # Transaction.append_temporary_transaction()
+    # send_message("vote_commit__"+response)
 
 
 def commit_transaction(response):
+    command = response.split(MESSAGE_DATA_SEPARATOR)
+    Transaction.move_sub_transaction_to_committed_transaction(shard_id, command[2])
+    # Transaction.move_transaction_from_temporary_to_committed_pool(shard_id, command[1])
     send_message("committed__"+response)  # TODO commit transction
 
 
 def abort_transaction(response):
+    command = response.split(MESSAGE_DATA_SEPARATOR)
+    Transaction.remove_transaction_from_temporary_transaction(shard_id, command[2])
+    Transaction.move_transaction_from_temporary_to_abort_pool(shard_id, command[1])
     send_message("aborted__"+response)  # TODO abort transction
 
 

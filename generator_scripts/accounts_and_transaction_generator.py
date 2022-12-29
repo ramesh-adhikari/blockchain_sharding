@@ -1,6 +1,7 @@
 import csv
 import datetime
 import hashlib
+import multiprocessing
 import os
 import sys
 import string
@@ -40,19 +41,31 @@ class AccountsAndTransactionGenerator:
                 continue
             
             shard_id = get_shard_for_account(account_number)
-            assign_account_to_shard_file_path = '/storages/shards/'+str(shard_id)+'/transactions/confirmed/'+TRANSACTION_FILE_NAME
+            assign_account_to_shard_file_path = '/storages/shards/'+str(shard_id)+'/transactions/committed/'+TRANSACTION_FILE_NAME
             acc_generator = AccountsAndTransactionGenerator()
             data = acc_generator.get_account_row_data(account)
             File.append_data(assign_account_to_shard_file_path, data)
-            
+
+    
+    def get_account_row_data(self,account):
+        data = [   
+                    'TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),
+                    'SUB_TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+account[ACCOUNT_INDEX_ACCOUNT_NAME]).encode()).hexdigest(),
+                    account[ACCOUNT_INDEX_ACCOUNT_NUMBER],
+                    account[ACCOUNT_INDEX_ACCOUNT_NAME],
+                    account[ACCOUNT_INDEX_AMOUNT],
+                    datetime.datetime.now()
+                ]
+        return data
+                
     
     
-    def create_transaction_and_append_to_transaction_pool():
+    def generate_and_assign_transaction_parallely(self, shard_id):
         # this function create the transaction using accounts in tmp accounts file
         # and append this created transaction to transactionpool
         tmp_account_save_file_path = '/storages/GENERATED_ACCOUNTS.CSV'
-        for nt in range(NUMBER_OF_TRANSACTIONS):
-            
+        for nt in range(NUMBER_OF_TRANSACTIONS_IN_EACH_TRANSACTION_POOL):
+                # print("Generated transaction pool for shard: "+str(shard_id))
                 data = File.open_file(tmp_account_save_file_path)
                 random_upper_bound=NUMBER_OF_ACCOUNTS-1
                 from_row = data[random.randint(1,random_upper_bound)]
@@ -65,18 +78,23 @@ class AccountsAndTransactionGenerator:
                     else:
                         conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+single_account[ACCOUNT_INDEX_AMOUNT]
                 data = ['TXN_'+hashlib.sha256((str(datetime.datetime.now())+single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),from_row[ACCOUNT_INDEX_ACCOUNT_NUMBER], to_row[ACCOUNT_INDEX_ACCOUNT_NUMBER],from_row[ACCOUNT_INDEX_AMOUNT],conditions,datetime.datetime.now()]
-                txn_pool_file_name = '/storages/shards/'+str(random.randint(0,NUMBER_OF_LEADER_SHARD-1))+'/transactions/pools/initial/'+TRANSACTION_FILE_NAME
+                txn_pool_file_name = '/storages/shards/'+str(shard_id)+'/transactions/pools/initial/'+TRANSACTION_FILE_NAME
                 File.append_data(txn_pool_file_name, data)
     
  
-    def get_account_row_data(self,account):
-        data = [   
-                    'TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),
-                    'SUB_TXN_'+hashlib.sha256((str(datetime.datetime.now())+account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+account[ACCOUNT_INDEX_ACCOUNT_NAME]).encode()).hexdigest(),
-                    account[ACCOUNT_INDEX_ACCOUNT_NUMBER],
-                    account[ACCOUNT_INDEX_ACCOUNT_NAME],
-                    account[ACCOUNT_INDEX_AMOUNT],
-                    datetime.datetime.now()
-                ]
-        return data
+   
     
+
+    def create_transaction_and_append_to_transaction_pool():
+        process_list = []
+        for shard in SHARDS:
+            if(shard[1]):
+                p =  multiprocessing.Process(
+                    target= AccountsAndTransactionGenerator().generate_and_assign_transaction_parallely,
+                    args=(shard[0],)
+                    )
+                p.start()
+                process_list.append(p)
+
+        for process in process_list:
+            process.join()

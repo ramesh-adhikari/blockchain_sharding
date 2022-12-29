@@ -3,7 +3,7 @@ import random
 import socket
 from _thread import *
 import time
-from config import HOST, MESSAGE_SEPARATOR, SHARDS
+from config import HOST, MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR, SHARDS
 from models.state import State
 from models.sub_transaction import split_transaction_to_sub_transactions
 from models.transaction import Transaction
@@ -95,7 +95,7 @@ def send_commit_message_to_write_shards():
     for sub_transation in sub_transactions:
         send_message_to_port(
             convert_shard_id_to_connection_port(sub_transation.shard),
-            "commit__"+sub_transation.txn_id
+            "commit__"+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id
         )
 
 
@@ -106,7 +106,7 @@ def send_abort_message_to_write_shards():
     for sub_transation in sub_transactions:
         send_message_to_port(
             convert_shard_id_to_connection_port(sub_transation.shard),
-            "abort__"+sub_transation.txn_id
+           "abort__"+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id
         )
 
 
@@ -128,7 +128,7 @@ def process_transaction(transaction,delay):
     update_state(State.PREPARING)
     waiting_vote_count = len(sub_transactions)
     for sub_transaction in sub_transactions:
-        Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,'acc name',sub_transaction.amount)
+        Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,sub_transaction.account_no.split('_')[1],sub_transaction.amount)
         send_message_to_port(convert_shard_id_to_connection_port(
             sub_transaction.shard), sub_transaction.to_message())
 

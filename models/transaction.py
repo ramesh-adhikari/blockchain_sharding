@@ -3,6 +3,8 @@ import datetime
 import os
 import sys
 import pandas as pd
+
+from generator_scripts.files_generator import FilesGenerator
 sys.path.append(os.path.abspath(os.curdir))
 from config import *
 from utility.shard import get_shard_for_account
@@ -13,23 +15,28 @@ class Transaction:
     
     def append_sub_transaction_to_temporary_file(txn_id, sub_txn_id, account_number, account_name, amount):
         shard_id = get_shard_for_account(account_number)
-        shard_file_path = '/storages/shards/'+str(shard_id)+'/transactions/temporary/'+TRANSACTION_FILE_NAME
+        shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
         timestamp = datetime.datetime.now()
         data = [txn_id, sub_txn_id, account_number, account_name, amount, timestamp]
         File.append_data(shard_file_path, data)
         
         
-    def move_sub_transaction_to_confirmed_transaction(shard_id, sub_txn_id):
-        # move pending transaction to confirm transaction
-        print('move pending transaction to confirm transaction')
-        source_file = Transaction().get_txn_file_path(shard_id, 'temporary')
-        destination_file = Transaction().get_txn_file_path(shard_id, 'confirmed')
+    def move_sub_transaction_to_committed_transaction(shard_id, sub_txn_id):
+        # move pending transaction to committed transaction
+        print('move pending transaction to committed transaction')
+        source_file = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
+        destination_file = FilesGenerator().get_txn_file_path(shard_id, 'committed')
         transaction = Transaction()
         transaction.move_transaction(source_file, destination_file, sub_txn_id, 'TRANSACTION')
+    
+    def remove_transaction_from_temporary_transaction(shard_id, sub_txn_id):
+        temporary_pool_txn_path = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
+        t_instance = Transaction()
+        t_instance.delete_row_by_txn_id(temporary_pool_txn_path,sub_txn_id,'TRANSACTION')
         
     
     def get_transactions_from_transaction_pool(shard_id):
-        txn_pool_initial_file_name = os.path.abspath(os.curdir)+Transaction().get_txn_pool_file_path(shard_id, 'initial')
+        txn_pool_initial_file_name = os.path.abspath(os.curdir)+FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
         data = pd.read_csv(txn_pool_initial_file_name)
         # sort transaction as per timestamp
         data['TIMESTAMP'] = pd.to_datetime(data['TIMESTAMP'], format="%Y/%m/%d %H:%M")
@@ -46,26 +53,32 @@ class Transaction:
     
     def move_transaction_from_initial_to_temporary_pool(self,shard_id, txn_id):
         transaction = Transaction()
-        source_file = transaction.get_txn_pool_file_path(shard_id, 'initial')
-        destination_file = transaction.get_txn_pool_file_path(shard_id, 'temporary')
+        source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
+        destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
         transaction.move_transaction(source_file, destination_file, txn_id)
         
     def move_transaction_from_temporary_to_abort_pool(shard_id, txn_id):
         transaction = Transaction()
-        source_file = transaction.get_txn_pool_file_path(shard_id, 'temporary')
-        destination_file = transaction.get_txn_pool_file_path(shard_id, 'aborted')
+        source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
+        destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'aborted')
         transaction = Transaction()
         transaction.move_transaction(source_file, destination_file, txn_id)
     
-    def move_transaction_from_temporary_to_initial(shard_id, txn_id):
+    def move_transaction_from_temporary_to_initial_pool(shard_id, txn_id):
         transaction = Transaction()
-        source_file = transaction.get_txn_pool_file_path(shard_id, 'temporary')
-        destination_file = transaction.get_txn_pool_file_path(shard_id, 'initial')
+        source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
+        destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
+        transaction.move_transaction(source_file, destination_file, txn_id)
+    
+    def move_transaction_from_temporary_to_committed_pool(shard_id, txn_id):
+        transaction = Transaction()
+        source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
+        destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'committed')
         transaction.move_transaction(source_file, destination_file, txn_id)
     
     def remove_transaction_from_temporary_pool(shard_id, txn_id):
         transaction = Transaction()
-        temporary_pool_txn_path = transaction.get_txn_pool_file_path(shard_id, 'temporary')
+        temporary_pool_txn_path = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
         t_instance = Transaction()
         t_instance.delete_row_by_txn_id(temporary_pool_txn_path,txn_id)
         
@@ -73,7 +86,7 @@ class Transaction:
     def has_amount(account_number, amount):
         # check whether the account has sufficient balance or not
         shard_id = get_shard_for_account(account_number)
-        shard_file_path = Transaction().get_txn_file_path(shard_id, 'confirmed')
+        shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'committed')
         shard_file_directory = os.path.abspath(os.curdir)+shard_file_path
         data_frame = pd.read_csv(shard_file_directory)
         # sum the amount associated with given account number
@@ -91,33 +104,34 @@ class Transaction:
             selected_rows = transaction.loc[transaction['SUB_TXN_ID'] == txn_id]
         else:
             selected_rows = transaction.loc[transaction['TXN_ID'] == txn_id]
+        
         t_instance = Transaction()
         move_data = t_instance.get_move_data(selected_rows, type)
         File.append_data(destination_file,move_data)
         
         # delete row from temporary
         if(type=='TRANSACTION'):
-            t_instance.delete_row_by_txn_id(source_file,selected_rows['SUB_TXN_ID'][0], type)
+            t_instance.delete_row_by_txn_id(source_file,selected_rows['SUB_TXN_ID'][selected_rows.index[0]], type)
         else:
-            t_instance.delete_row_by_txn_id(source_file,selected_rows['TXN_ID'][0], type)
+            t_instance.delete_row_by_txn_id(source_file,selected_rows['TXN_ID'][selected_rows.index[0]], type)
 
         
     def get_move_data(self, row, type):
         if(type=='TRANSACTION_POOL'):
-           return [row['TXN_ID'][0],   
-                     row['SENDER_ACCOUNT_NUMBER'][0],
-                     row['RECEIVER_ACCOUNT_NUMBER'][0],
-                     row['AMOUNT'][0],
-                     row['CONDITIONS'][0],
-                     row['TIMESTAMP'][0]
+           return [row['TXN_ID'][row.index[0]],   
+                     row['SENDER_ACCOUNT_NUMBER'][row.index[0]],
+                     row['RECEIVER_ACCOUNT_NUMBER'][row.index[0]],
+                     row['AMOUNT'][row.index[0]],
+                     row['CONDITIONS'][row.index[0]],
+                     row['TIMESTAMP'][row.index[0]]
                     ] 
         elif(type=='TRANSACTION'):
-            return [row['TXN_ID'][0],
-                     row['SUB_TXN_ID'][0],
-                     row['ACCOUNT_NUMBER'][0],
-                     row['ACCOUNT_NAME'][0],
-                     row['AMOUNT'][0],
-                     row['TIMESTAMP'][0]
+            return [row['TXN_ID'][row.index[0]],
+                     row['SUB_TXN_ID'][row.index[0]],
+                     row['ACCOUNT_NUMBER'][row.index[0]],
+                     row['ACCOUNT_NAME'][row.index[0]],
+                     row['AMOUNT'][row.index[0]],
+                     row['TIMESTAMP'][row.index[0]]
                      ]
     
     def delete_row_by_txn_id(self, file_path, txn_id, type):
@@ -131,10 +145,4 @@ class Transaction:
 
         transaction.to_csv(abs_file_path,index=False)
     
-
-    def get_txn_pool_file_path(self, shard_id, rel_directory):
-        return '/storages/shards/'+str(shard_id)+'/transactions/pools/'+rel_directory+'/'+TRANSACTION_FILE_NAME
-    
-    def get_txn_file_path(self, shard_id, rel_directory):
-        return '/storages/shards/'+str(shard_id)+'/transactions/'+rel_directory+'/'+TRANSACTION_FILE_NAME
     
