@@ -44,31 +44,34 @@ def check_balance(response):
     command = response.split(MESSAGE_DATA_SEPARATOR)
     success = Transaction.has_amount(command[1],command[2])
     if success:
-        send_message("vote_commit__"+response)
+        send_message("vote_commit"+MESSAGE_DATA_SEPARATOR+response)
     else:
-        send_message("vote_abort__"+response)
+        send_message("vote_abort"+MESSAGE_DATA_SEPARATOR+response)
 
 
 def update_balance(response):
     command = response.split(MESSAGE_DATA_SEPARATOR)
     success = Transaction.has_amount(command[1],command[2]) #TODO implement update call
-    # if success: 
-        # Transaction.append_temporary_transaction()
-    # send_message("vote_commit__"+response)
+    if success: 
+        Transaction.append_sub_transaction_to_temporary_file(command[3],command[4],command[1],command[1].split('_')[1],command[2],shard_id)
+        send_message("vote_commit"+MESSAGE_DATA_SEPARATOR+response)
+    else:
+        send_message("vote_abort"+MESSAGE_DATA_SEPARATOR+response)
 
 
 def commit_transaction(response):
     command = response.split(MESSAGE_DATA_SEPARATOR)
-    Transaction.move_sub_transaction_to_committed_transaction(shard_id, command[2])
-    # Transaction.move_transaction_from_temporary_to_committed_pool(shard_id, command[1])
-    send_message("committed__"+response)  # TODO commit transction
+    if(command[3]=="update"):
+        Transaction.move_sub_transaction_to_committed_transaction(shard_id, command[2])
+    send_message("committed"+MESSAGE_DATA_SEPARATOR+response)  # TODO commit transction
 
 
 def abort_transaction(response):
+    #TODO handle differet abort 1. insufficient balance -> transaction pool ->abort pool, sub_transaction -> remove, 2. version conflict -> transaction pool -> initial, sub_transaction -> remove
     command = response.split(MESSAGE_DATA_SEPARATOR)
-    Transaction.remove_transaction_from_temporary_transaction(shard_id, command[2])
-    Transaction.move_transaction_from_temporary_to_abort_pool(shard_id, command[1])
-    send_message("aborted__"+response)  # TODO abort transction
+    if(command[3]=="update"):
+        Transaction.remove_transaction_from_temporary_transaction(shard_id, command[2])
+    send_message("aborted"+MESSAGE_DATA_SEPARATOR+response)  # TODO abort transction
 
 
 def send_message(message):

@@ -57,12 +57,12 @@ def handle_vote_commit():
     if (state == State.PREPARING):
         waiting_vote_count -= 1
         if (waiting_vote_count == 0):
-            send_commit_message_to_write_shards()
+            send_commit_message()
 
 
 def handle_vote_abort():
     if (state == State.PREPARING):
-        send_abort_message_to_write_shards()
+        send_abort_message()
     print("Handle vote abort")
 
 
@@ -71,6 +71,7 @@ def handle_committed():
     if (state == State.COMMITING):
         waiting_vote_count -= 1
         if (waiting_vote_count == 0):
+            Transaction.move_transaction_from_temporary_to_committed_pool(shard_id,sub_transactions[0].txn_id)
             print(
                 "Commited message received from all parties, processing next transaction")
             update_state(State.NONE)
@@ -82,31 +83,32 @@ def handle_aborted():
     if (state == State.ABORTING):
         waiting_vote_count -= 1
         if (waiting_vote_count == 0):
+            Transaction.move_transaction_from_temporary_to_abort_pool(shard_id,sub_transactions[0].txn_id)
             print(
                 "Aborted message received from all parties, processing next transaction")
             update_state(State.NONE)
             process_next_transaction_in_new_thread()
 
 
-def send_commit_message_to_write_shards():
+def send_commit_message():
     global waiting_vote_count
     update_state(State.COMMITING)
     waiting_vote_count = len(sub_transactions)
     for sub_transation in sub_transactions:
         send_message_to_port(
             convert_shard_id_to_connection_port(sub_transation.shard),
-            "commit__"+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id
+            "commit"+MESSAGE_DATA_SEPARATOR+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.type
         )
 
 
-def send_abort_message_to_write_shards():
+def send_abort_message():
     global waiting_vote_count
     update_state(State.ABORTING)
     waiting_vote_count = len(sub_transactions)
     for sub_transation in sub_transactions:
         send_message_to_port(
             convert_shard_id_to_connection_port(sub_transation.shard),
-           "abort__"+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id
+           "abort"+MESSAGE_DATA_SEPARATOR+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.type
         )
 
 
@@ -128,7 +130,6 @@ def process_transaction(transaction,delay):
     update_state(State.PREPARING)
     waiting_vote_count = len(sub_transactions)
     for sub_transaction in sub_transactions:
-        Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,sub_transaction.account_no.split('_')[1],sub_transaction.amount)
         send_message_to_port(convert_shard_id_to_connection_port(
             sub_transaction.shard), sub_transaction.to_message())
 

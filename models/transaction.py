@@ -13,8 +13,7 @@ from utility.file import File
 
 class Transaction:
     
-    def append_sub_transaction_to_temporary_file(txn_id, sub_txn_id, account_number, account_name, amount):
-        shard_id = get_shard_for_account(account_number)
+    def append_sub_transaction_to_temporary_file(txn_id, sub_txn_id, account_number, account_name, amount,shard_id):
         shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
         timestamp = datetime.datetime.now()
         data = [txn_id, sub_txn_id, account_number, account_name, amount, timestamp]
@@ -46,7 +45,7 @@ class Transaction:
 
         with open(txn_pool_initial_file_name, newline='') as f:
             reader = csv.reader(f)
-            row1 = next(reader)
+            row1 = next(reader) #TODO Ramesh return completed transaction message
             row2=next(reader)
         Transaction().move_transaction_from_initial_to_temporary_pool(shard_id,row2[0])
         return row2
@@ -126,6 +125,7 @@ class Transaction:
                      row['TIMESTAMP'][row.index[0]]
                     ] 
         elif(type=='TRANSACTION'):
+            print(row)
             return [row['TXN_ID'][row.index[0]],
                      row['SUB_TXN_ID'][row.index[0]],
                      row['ACCOUNT_NUMBER'][row.index[0]],

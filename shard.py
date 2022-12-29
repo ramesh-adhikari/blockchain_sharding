@@ -6,6 +6,8 @@ from models.sub_transaction import split_transaction_to_sub_transactions
 
 shards = list()
 
+#TODO remove this class
+
 
 def process_transactions():
     print("Processing transactions")

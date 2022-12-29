@@ -17,11 +17,12 @@ class SubTransaction:
     def __str__(self):
         return "TXN ID : " + str(
             self.txn_id) + ", Type: " + self.type + ", Account No: " + self.account_no + ", Amount: " + str(
-            self.amount) + ", Shard: " + str(id) + "SUB_TXN_ID :" + str(self.sub_txn_id)
+            self.amount) + ", Shard: " + str(self.shard) + "SUB_TXN_ID :" + str(self.sub_txn_id)
 
     def to_message(self):
-        return self.type + MESSAGE_DATA_SEPARATOR + self.account_no + MESSAGE_DATA_SEPARATOR + str(self.amount)
+        return self.type + MESSAGE_DATA_SEPARATOR + self.account_no + MESSAGE_DATA_SEPARATOR + str(self.amount)+ MESSAGE_DATA_SEPARATOR + self.txn_id + MESSAGE_DATA_SEPARATOR + self.sub_txn_id+MESSAGE_DATA_SEPARATOR + str(self.shard)
 
+    #TODO add method to convert message to model
 
 def split_transaction_to_sub_transactions(transcation):
     transaction_id = transcation[0]
