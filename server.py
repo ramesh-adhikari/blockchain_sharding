@@ -1,11 +1,10 @@
-import csv
-import random
+from ast import List
 import socket
 from _thread import *
 import time
-from config import HOST, MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR, SHARDS
+from config import HOST, MESSAGE_SEPARATOR, SHARDS
 from models.state import State
-from models.sub_transaction import split_transaction_to_sub_transactions
+from models.sub_transaction import SubTransaction, split_transaction_to_sub_transactions
 from models.transaction import Transaction
 
 
@@ -97,7 +96,7 @@ def send_commit_message():
     for sub_transation in sub_transactions:
         send_message_to_port(
             convert_shard_id_to_connection_port(sub_transation.shard),
-            "commit"+MESSAGE_DATA_SEPARATOR+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.type
+            sub_transation.change_type("commit").to_message()
         )
 
 
@@ -108,7 +107,7 @@ def send_abort_message():
     for sub_transation in sub_transactions:
         send_message_to_port(
             convert_shard_id_to_connection_port(sub_transation.shard),
-           "abort"+MESSAGE_DATA_SEPARATOR+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.type
+           sub_transation.change_type("abort").to_message()
         )
 
 

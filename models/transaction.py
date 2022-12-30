@@ -125,7 +125,6 @@ class Transaction:
                      row['TIMESTAMP'][row.index[0]]
                     ] 
         elif(type=='TRANSACTION'):
-            print(row)
             return [row['TXN_ID'][row.index[0]],
                      row['SUB_TXN_ID'][row.index[0]],
                      row['ACCOUNT_NUMBER'][row.index[0]],

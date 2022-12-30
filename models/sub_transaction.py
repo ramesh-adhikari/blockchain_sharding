@@ -6,23 +6,34 @@ from config import MESSAGE_DATA_SEPARATOR
 
 
 class SubTransaction:
-    def __init__(self, txn_id: int, type: str, account_no: str, amount: int, shard: int, sub_txn_id: str) -> None:
+    def __init__(self,  type: str,txn_id: int, account_no: str,account_name: str, amount: int, shard: int, sub_txn_id: str) -> None:
+        self.type = type  # check or update or commit or abort
         self.txn_id = txn_id
-        self.type = type  # check or update
         self.account_no = account_no
+        self.account_name = account_name
         self.amount = amount
         self.shard = shard
         self.sub_txn_id = sub_txn_id
 
     def __str__(self):
-        return "TXN ID : " + str(
-            self.txn_id) + ", Type: " + self.type + ", Account No: " + self.account_no + ", Amount: " + str(
-            self.amount) + ", Shard: " + str(self.shard) + "SUB_TXN_ID :" + str(self.sub_txn_id)
+        return self.to_message()
 
     def to_message(self):
-        return self.type + MESSAGE_DATA_SEPARATOR + self.account_no + MESSAGE_DATA_SEPARATOR + str(self.amount)+ MESSAGE_DATA_SEPARATOR + self.txn_id + MESSAGE_DATA_SEPARATOR + self.sub_txn_id+MESSAGE_DATA_SEPARATOR + str(self.shard)
+        return self.type + MESSAGE_DATA_SEPARATOR \
+        + self.txn_id + MESSAGE_DATA_SEPARATOR \
+        + self.account_no + MESSAGE_DATA_SEPARATOR \
+        + self.account_name + MESSAGE_DATA_SEPARATOR \
+        + str(self.amount)+ MESSAGE_DATA_SEPARATOR \
+        + str(self.shard)+MESSAGE_DATA_SEPARATOR\
+        + str(self.sub_txn_id)
 
-    #TODO add method to convert message to model
+    def change_type(self,type):
+        return SubTransaction(type,self.txn_id,self.account_no,self.account_name,self.amount,self.shard,self.sub_txn_id)
+
+    @staticmethod
+    def from_message(message):
+        message = message.split(MESSAGE_DATA_SEPARATOR)
+        return SubTransaction(message[0],message[1],message[2],message[3],message[4],message[5],message[6])
 
 def split_transaction_to_sub_transactions(transcation):
     transaction_id = transcation[0]
@@ -33,38 +44,43 @@ def split_transaction_to_sub_transactions(transcation):
         # sub-transaction to check condition
         sub_transactions.append(
             SubTransaction(
-                transaction_id,
                 "check",
+                transaction_id,
                 condition[0],
+                condition[0].split('_')[1],
                 condition[1],
                 get_shard_for_account(condition[0]),
-                'SUB_TXN_' + hashlib.sha256((str(datetime.datetime.now()) + condition[0]).encode()).hexdigest()
+                generate_sub_transaction_id(condition[0])
             )
         )
     # sub-transaction to update balance of receiver
     sub_transactions.append(
         SubTransaction(
-            transaction_id,
             "update",
+            transaction_id,
             transcation[2],
+            transcation[2].split('_')[1],
             transcation[3],
             get_shard_for_account(transcation[2]),
-            'SUB_TXN_' + hashlib.sha256((str(datetime.datetime.now()) + transcation[2]).encode()).hexdigest()
+            generate_sub_transaction_id(transcation[2])
         )
     )
     # sub-transaction to update balance of sender
     sub_transactions.append(
         SubTransaction(
-            transaction_id,
             "update",
+            transaction_id,
             transcation[1],
+            transcation[1].split('_')[1],
             -abs(int(transcation[3])),
             get_shard_for_account(transcation[1]),
-            'SUB_TXN_' + hashlib.sha256((str(datetime.datetime.now()) + transcation[1]).encode()).hexdigest()
+           generate_sub_transaction_id(transcation[1])
         )
     )
     return sub_transactions
 
+def generate_sub_transaction_id(sub_transaction):
+    return 'SUB_TXN_' + hashlib.sha256((str(datetime.datetime.now()) + sub_transaction).encode()).hexdigest()
 
 def get_shard_for_account(account_no):
     return int(account_no.rsplit('_', 1)[0]) % len(SHARDS)
