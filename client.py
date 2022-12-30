@@ -5,13 +5,15 @@ from models.sub_transaction import SubTransaction
 from models.transaction import Transaction
 
 client_socket = None
+leader_shard_id = 0
 shard_id = 0
 
 
-def init_client(s_id,port):
-    time.sleep(50 / 1000)
-    global client_socket, shard_id
+def init_client(s_id,port,leader_s_id):
+    time.sleep(500 / 1000) # delaying client, so server is ready
+    global client_socket, shard_id,leader_shard_id
     shard_id = s_id
+    leader_shard_id = leader_s_id
 
     client_socket = socket.socket()
     client_socket.connect((HOST, port))
@@ -28,8 +30,10 @@ def decode_response_from_server(client_socket):
 
 
 def handle_response_from_server(response):
-    print("Client "+str(shard_id)+" received message : "+response)
+    print("Leader shard "+str(leader_shard_id)+" > Shard "+str(shard_id)+" : "+response)
     if (response == "send_shard_id"):
+        c_host, c_port = client_socket.getsockname()
+        print("Shard "+str(shard_id)+" will communicate with leader shard "+str(leader_shard_id)+ " in port "+str(c_port))
         send_message("shard_id_"+str(shard_id))
     elif response.startswith("check"):
         check_balance(response)
