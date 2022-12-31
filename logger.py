@@ -2,22 +2,18 @@
 import time
 from config import *
 import numpy as np 
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
+
+from utility.shard import get_number_of_leader_shards 
 
 def generate_log(start_time):
     generate_report(start_time)
 
 def generate_report(start_time):
-    total_number_of_leader=0
-    for shard in SHARDS:
-        if(shard[1]):
-            total_number_of_leader = total_number_of_leader+1
-
-    total_number_of_transaction = NUMBER_OF_TRANSACTIONS_IN_EACH_TRANSACTION_POOL*total_number_of_leader
     print("Total Number of Shards : " +str(len(SHARDS)) 
-        + " Total Number of Leader Shards : "+str(total_number_of_leader)
-        + " Total Transaction : " +str(total_number_of_transaction)
-        + " Total Number of Subtransactions : " +str(total_number_of_transaction*(NUMBER_OF_CONDITIONS+1))
+        + " Total Number of Leader Shards : "+str(get_number_of_leader_shards())
+        + " Total Transaction : " +str(TOTAL_NUMBER_OF_TRANSACTIONS)
+        + " Total Number of Subtransactions : " +str(TOTAL_NUMBER_OF_TRANSACTIONS*(NUMBER_OF_CONDITIONS+2))
         + " Total Accounts : " +str(NUMBER_OF_ACCOUNTS)
         + " Conditions per transactions : " +str((NUMBER_OF_CONDITIONS+1))
     )

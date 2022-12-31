@@ -8,7 +8,7 @@ import string
 import random
 from random import randrange
 
-from utility.shard import get_shard_for_account
+from utility.shard import get_number_of_leader_shards, get_shard_for_account
 
 sys.path.append(os.path.abspath(os.curdir))
 from  config import *
@@ -65,7 +65,7 @@ class AccountsAndTransactionGenerator:
         # this function create the transaction using accounts in tmp accounts file
         # and append this created transaction to transactionpool
         tmp_account_save_file_path = '/storages/GENERATED_ACCOUNTS.CSV'
-        for nt in range(NUMBER_OF_TRANSACTIONS_IN_EACH_TRANSACTION_POOL):
+        for nt in range(int(TOTAL_NUMBER_OF_TRANSACTIONS/get_number_of_leader_shards())):
                 # print("Generated transaction pool for shard: "+str(shard_id))
                 data = File.open_file(tmp_account_save_file_path)
                 random_upper_bound=NUMBER_OF_ACCOUNTS-1

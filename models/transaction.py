@@ -52,7 +52,6 @@ class Transaction:
                     Transaction().move_transaction_from_initial_to_temporary_pool(shard_id,row2[0])
                     return row2
             else:
-                print('######### Transactions in the transaction pool of shard ID: '+str(shard_id)+ " has been completed!!!#######")
                 return None
     
     def move_transaction_from_initial_to_temporary_pool(self,shard_id, txn_id):
@@ -130,7 +129,6 @@ class Transaction:
                      row['TIMESTAMP'][row.index[0]]
                     ] 
         elif(type=='TRANSACTION'):
-            print(row)
             return [row['TXN_ID'][row.index[0]],
                      row['SUB_TXN_ID'][row.index[0]],
                      row['ACCOUNT_NUMBER'][row.index[0]],

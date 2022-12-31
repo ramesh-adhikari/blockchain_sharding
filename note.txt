@@ -1,0 +1,24 @@
+ LS1, S2, S3, LS4
+ LS1 (8085), LS4 (8086)
+ S2(8085), S2(8086)
+ S3(8085), S2(8086)
+
+S2->A , S3->B
+A->LS1->S2->8085, A->LS4->S2->8086
+
+ Leader LS1, LS4
+LS1 -> S1, S2, S3, S4
+LS4 -> S1, S2, S3, S4
+
+
+Total Number of Shards : 5 Total Number of Leader Shards : 1 Total Transaction : 100 Total Number of Subtransactions : 500 Total Accounts : 150 Conditions per transactions : 5
+To process total transaction with it took 42.001150131225586 seconds
+
+Total Number of Shards : 5 Total Number of Leader Shards : 2 Total Transaction : 100 Total Number of Subtransactions : 500 Total Accounts : 150 Conditions per transactions : 5
+To process total transaction with it took 21.846729040145874 seconds
+
+Total Number of Shards : 5 Total Number of Leader Shards : 3 Total Transaction : 100 Total Number of Subtransactions : 500 Total Accounts : 150 Conditions per transactions : 5
+To process total transaction with it took 15.253434181213379 seconds
+
+Total Number of Shards : 5 Total Number of Leader Shards : 4 Total Transaction : 100 Total Number of Subtransactions : 500 Total Accounts : 150 Conditions per transactions : 5
+To process total transaction with it took 11.109429121017456 seconds

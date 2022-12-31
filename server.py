@@ -1,9 +1,8 @@
-import csv
-import random
 import socket
 from _thread import *
+import socketserver
 import time
-from config import HOST, MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR, SHARDS
+from config import HOST, MESSAGE_SEPARATOR, SHARDS
 from models.state import State
 from models.sub_transaction import split_transaction_to_sub_transactions
 from models.transaction import Transaction
@@ -15,6 +14,8 @@ waiting_vote_count = 0
 state: State = State.NONE
 sub_transactions = []
 shard_id = 0
+server_socket:socketserver = None
+
 terminate_transaction_processing = False
 server_socket = None
 
@@ -38,7 +39,7 @@ def decode_response_from_client(connection):
 
 
 def handle_response_from_client(connection, response):
-    print("Server received message : "+response)
+    print("Shard "+convert_connection_to_shard_id(connection)+" > Leader shard "+str(shard_id)+" : "+response)
     if (response.startswith("shard_id")):
         register_shard_id(connection, response)
     elif (response.startswith("vote_commit")):
@@ -54,6 +55,9 @@ def handle_response_from_client(connection, response):
 def register_shard_id(connection, response):
     c_host, c_port = connection.getpeername()
     shards[response.replace("shard_id_", "")] = c_port
+    if(len(shards)==len(SHARDS)):
+        print("All "+str(len(SHARDS))+" shards connected to leader shard "+str(shard_id)+". Started processing transaction .....")
+        process_next_transaction_in_new_thread()
 
 
 def handle_vote_commit():
@@ -67,7 +71,6 @@ def handle_vote_commit():
 def handle_vote_abort():
     if (state == State.PREPARING):
         send_abort_message()
-    print("Handle vote abort")
 
 
 def handle_committed():
@@ -77,7 +80,7 @@ def handle_committed():
         if (waiting_vote_count == 0):
             Transaction.move_transaction_from_temporary_to_committed_pool(shard_id,sub_transactions[0].txn_id)
             print(
-                "Commited message received from all parties, processing next transaction")
+                "Leader shard "+str(shard_id)+" received commited message from all shards for transaction "+sub_transactions[0].txn_id+". Processing next transaction .....")
             update_state(State.NONE)
             process_next_transaction_in_new_thread()
 
@@ -89,7 +92,7 @@ def handle_aborted():
         if (waiting_vote_count == 0):
             Transaction.move_transaction_from_temporary_to_abort_pool(shard_id,sub_transactions[0].txn_id)
             print(
-                "Aborted message received from all parties, processing next transaction")
+                "Leader shard "+str(shard_id)+" received aborted message from all shards for transaction "+sub_transactions[0].txn_id+". Processing next transaction .....")
             update_state(State.NONE)
             process_next_transaction_in_new_thread()
 
@@ -101,7 +104,7 @@ def send_commit_message():
     for sub_transation in sub_transactions:
         send_message_to_port(
             convert_shard_id_to_connection_port(sub_transation.shard),
-            "commit"+MESSAGE_DATA_SEPARATOR+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.type
+            sub_transation.change_type("commit").to_message()
         )
 
 
@@ -112,15 +115,22 @@ def send_abort_message():
     for sub_transation in sub_transactions:
         send_message_to_port(
             convert_shard_id_to_connection_port(sub_transation.shard),
-           "abort"+MESSAGE_DATA_SEPARATOR+sub_transation.txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.sub_txn_id+MESSAGE_DATA_SEPARATOR+sub_transation.type
+           sub_transation.change_type("abort").to_message()
         )
 
 
 def convert_shard_id_to_connection_port(shard_id):
     return shards[str(shard_id)]
 
+def convert_connection_to_shard_id(connection):
+    c_host, c_port = connection.getpeername()
+    for key, value in shards.items():
+        if value == c_port:
+            return str(key)
+    return "?"
 
-def process_next_transaction_in_new_thread(delay=20/1000):
+
+def process_next_transaction_in_new_thread(delay=0/1000): #delay for better visibility of transactions
     start_new_thread(
         process_transaction,
         (Transaction.get_transactions_from_transaction_pool(shard_id),delay)
@@ -138,6 +148,7 @@ def process_transaction(transaction,delay):
             send_message_to_port(convert_shard_id_to_connection_port(
                 sub_transaction.shard), sub_transaction.to_message())
     else:
+        print("Leader shard "+str(shard_id)+" processed all transactions from transaction pool.")
         send_to_all_clients("end_transaction")
         terminate_transaction_processing = True
         close_server_socket()
@@ -146,7 +157,7 @@ def process_transaction(transaction,delay):
 def send_to_all_clients(message):
     for connection_port in shards.values():
         send_message_to_port(connection_port,message)
-    
+
 
 def send_message_to_connection(connection, message):
     connection.sendall(str.encode(message+MESSAGE_SEPARATOR))
@@ -172,8 +183,13 @@ def update_state(_state: State):
     global state
     state = _state
 
+def close_socket():
+    server_socket.close()
+
 
 def init_server(s_id,port):
+    global shard_id,server_socket
+
     global shard_id,terminate_transaction_processing,server_socket,shards
     connected_sockets = 0
 
@@ -187,12 +203,10 @@ def init_server(s_id,port):
         print(str(e))
     server_socket.listen(len(SHARDS))
 
-    process_next_transaction_in_new_thread(200/1000)
+    print('Leader shard '+str(shard_id)+' connected to : ' + str(HOST) + ':' + str(port))
 
     while connected_sockets != len(SHARDS):
         client_socket, address = server_socket.accept()
-        print('Connected to: ' + address[0] + ':' +
-              str(address[1]))
         start_new_thread(multi_threaded_client, (client_socket, ))
         connected_sockets +=1
 
@@ -202,4 +216,4 @@ def init_server(s_id,port):
 def close_server_socket():
     global server_socket
     server_socket.close()
-    
+

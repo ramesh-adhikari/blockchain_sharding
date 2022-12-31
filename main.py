@@ -7,50 +7,51 @@ from models.transaction import Transaction
 import sys
 import multiprocessing
 from client import init_client
-from models.shard import Shard
 from server import init_server
-from shard import *
 from config import *
+
+
 
 processes = []
 
+def init_process(server,shard_id, port,leader_shard_id):
+    if(server):
+        p = multiprocessing.Process(target=init_server, args=(shard_id,port))
+    else:
+        p = multiprocessing.Process(target=init_client, args=(shard_id,port,leader_shard_id))
+    processes.append(p)
+    p.start()
+
+def init_clients(port,leader_shard_id):
+    for shard in SHARDS:
+        init_process(False,shard[0],port,leader_shard_id) #client
+
 def parallel_transactions_processing():
-    shards = generate_shards()
     port = INITAIL_PORT
-    for shard in shards:
-        if(shard.is_leader):
-            init_process(True,shard.id,port) #server
-            init_clients(shards,port)
+    for shard in SHARDS:
+        if(shard[1]): # is leader
+            init_process(True,shard[0],port,shard[0]) #server
+            time.sleep(500 / 1000) # delaying client, so server is ready
+            init_clients(port,shard[0])
             port += 1
 
     for process in processes:
         process.join()
 
-def init_process(server,shard_id, port):
-    p = multiprocessing.Process(target=init_server if server else init_client, args=(shard_id,port,))
-    processes.append(p)
-    p.start()
-
-def init_clients(shards,port):
-    for shard in shards:
-        init_process(False,shard.id,port) #client
-
 if __name__ == '__main__':
 
-    start_time = time.time()
-
     if (len( sys.argv ) > 1):
-        print("Erase old transactions and generate new transactions and process these transactions")
+        print("Removing old transactions data and generating new data for transaction processing ....")
         Bootstrap.run()
-        parallel_transactions_processing()
     else:
         if(os.path.exists(os.path.abspath(os.curdir)+'/storages')):
             print('Start processing existing transactions!')
-            parallel_transactions_processing()
         else:
             print('Transactions and storages not found please run the command with extra parameters like: "python3 main.py storage"')
             exit()
 
+    start_time = time.time()
+    parallel_transactions_processing()
     generate_log(start_time)
 
 
