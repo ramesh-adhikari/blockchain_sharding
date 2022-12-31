@@ -5,6 +5,7 @@ from models.transaction import Transaction
 
 client_socket = None
 shard_id = 0
+terminate_transaction_processing = False
 
 
 def init_client(s_id,port):
@@ -16,9 +17,12 @@ def init_client(s_id,port):
     client_socket.connect((HOST, port))
 
     while True:
+        if terminate_transaction_processing:
+            break
         for response in decode_response_from_server(client_socket):
             handle_response_from_server(response)
 
+    close_socket()
 
 def decode_response_from_server(client_socket):
     response_list = client_socket.recv(1024).decode().split(MESSAGE_SEPARATOR)
@@ -27,6 +31,7 @@ def decode_response_from_server(client_socket):
 
 
 def handle_response_from_server(response):
+    global terminate_transaction_processing
     print("Client "+str(shard_id)+" received message : "+response)
     if (response == "send_shard_id"):
         send_message("shard_id_"+str(shard_id))
@@ -38,6 +43,8 @@ def handle_response_from_server(response):
         commit_transaction(response)
     elif response.startswith("abort"):
         abort_transaction(response)
+    elif response.startswith("end_transaction"):
+        terminate_transaction_processing = True
 
 
 def check_balance(response):

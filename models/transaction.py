@@ -53,7 +53,7 @@ class Transaction:
                     return row2
             else:
                 print('######### Transactions in the transaction pool of shard ID: '+str(shard_id)+ " has been completed!!!#######")
-                return []
+                return None
     
     def move_transaction_from_initial_to_temporary_pool(self,shard_id, txn_id):
         transaction = Transaction()
