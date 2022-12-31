@@ -11,7 +11,6 @@ def generate_log(start_time):
 
 def generate_report(start_time):
     total_time = "{}".format(time.time() - start_time)
-     #TODO Ramesh beautify this, add other parameters like per second
     print("\n")
     print("------------------------------ REPORT STARTING ... ------------------------------")
     print("Total Number of Shards : " +str(len(SHARDS))+'\n'
