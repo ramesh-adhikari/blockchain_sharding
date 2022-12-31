@@ -1,15 +1,57 @@
 
+import os
+import time
 from generator_scripts.bootstrap import Bootstrap
+from logger import generate_log
 from models.transaction import Transaction
+import sys
+import multiprocessing
+from client import init_client
+from server import init_server
+from config import *
+
+
+
+processes = []
+
+def init_process(server,shard_id, port,leader_shard_id):
+    if(server):
+        p = multiprocessing.Process(target=init_server, args=(shard_id,port))
+    else:
+        p = multiprocessing.Process(target=init_client, args=(shard_id,port,leader_shard_id))
+    processes.append(p)
+    p.start()
+
+def init_clients(port,leader_shard_id):
+    for shard in SHARDS:
+        init_process(False,shard[0],port,leader_shard_id) #client
+
+def parallel_transactions_processing():
+    port = INITAIL_PORT
+    for shard in SHARDS:
+        if(shard[1]): # is leader
+            init_process(True,shard[0],port,shard[0]) #server
+            time.sleep(500 / 1000) # delaying client, so server is ready
+            init_clients(port,shard[0])
+            port += 1
+
+    for process in processes:
+        process.join()
 
 if __name__ == '__main__':
 
-    Bootstrap.run()
-    #  storages->shards->01->transactions->confirm/temporary/pool
-    # print(Transaction.get_transactions_from_transaction_pool(0))
-    # Transaction.move_transaction_from_initial_to_temporary_pool(0,'TXN_1d7242005b207644bfb2d4613d2efb3b900861c2554fcab5cb92a4b731ca35c2')
-    # Transaction.move_transaction_from_temporary_to_abort_pool(0,'TXN_fadb11b575c8f48c6b8a3be49086eda55f3fb7670d24e922c7653f9946fdccb3')
-    # Transaction.remove_transaction_from_temporary_pool(0,'TXN_8b2dae0475134a9c77ef101fda03f18cbcad1b83902636d9604ebf83c3325552')
-    # Transaction.append_sub_transaction_to_temporary_file('TXN_7aae3a94427c56d0a029f29f8fcac23c143a25a9fac1c058c30674a17a023321','sub_trxn_1','43_WVJ','ramesh',100)
-    # Transaction.move_sub_transaction_to_confirmed_transaction(3,'sub_trxn_1')
-    # Transaction.move_sub_transaction_to_committed_transaction('0','SUB_TXN_e129e95e39a982d9dc5e3b52839e34a225b5fc39b5375571a994304ef49f5424')
+    if (len( sys.argv ) > 1):
+        print("Removing old transactions data and generating new data for transaction processing ....")
+        Bootstrap.run()
+    else:
+        if(os.path.exists(os.path.abspath(os.curdir)+'/storages')):
+            print('Start processing existing transactions!')
+        else:
+            print('Transactions and storages not found please run the command with extra parameters like: "python3 main.py storage"')
+            exit()
+
+    start_time = time.time()
+    parallel_transactions_processing()
+    generate_log(start_time)
+
+

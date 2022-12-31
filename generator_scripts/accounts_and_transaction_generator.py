@@ -6,8 +6,9 @@ import os
 import sys
 import string
 import random
+from random import randrange
 
-from utility.shard import get_shard_for_account
+from utility.shard import get_number_of_leader_shards, get_shard_for_account
 
 sys.path.append(os.path.abspath(os.curdir))
 from  config import *
@@ -64,7 +65,7 @@ class AccountsAndTransactionGenerator:
         # this function create the transaction using accounts in tmp accounts file
         # and append this created transaction to transactionpool
         tmp_account_save_file_path = '/storages/GENERATED_ACCOUNTS.CSV'
-        for nt in range(NUMBER_OF_TRANSACTIONS_IN_EACH_TRANSACTION_POOL):
+        for nt in range(int(TOTAL_NUMBER_OF_TRANSACTIONS/get_number_of_leader_shards())):
                 # print("Generated transaction pool for shard: "+str(shard_id))
                 data = File.open_file(tmp_account_save_file_path)
                 random_upper_bound=NUMBER_OF_ACCOUNTS-1
@@ -74,16 +75,13 @@ class AccountsAndTransactionGenerator:
                 for con in range(NUMBER_OF_CONDITIONS):
                     single_account = data[random.randint(1,random_upper_bound)]
                     if con!=(NUMBER_OF_CONDITIONS-1):
-                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+single_account[ACCOUNT_INDEX_AMOUNT]+CONDITION_AND
+                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+str(randrange(int(single_account[ACCOUNT_INDEX_AMOUNT])))+CONDITION_AND
                     else:
-                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+single_account[ACCOUNT_INDEX_AMOUNT]
-                data = ['TXN_'+hashlib.sha256((str(datetime.datetime.now())+single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),from_row[ACCOUNT_INDEX_ACCOUNT_NUMBER], to_row[ACCOUNT_INDEX_ACCOUNT_NUMBER],from_row[ACCOUNT_INDEX_AMOUNT],conditions,datetime.datetime.now()]
+                        conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+str(randrange(int(single_account[ACCOUNT_INDEX_AMOUNT])))
+                data = ['TXN_'+hashlib.sha256((str(datetime.datetime.now())+single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]).encode()).hexdigest(),from_row[ACCOUNT_INDEX_ACCOUNT_NUMBER], to_row[ACCOUNT_INDEX_ACCOUNT_NUMBER],str(randrange(int(from_row[ACCOUNT_INDEX_AMOUNT]))),conditions,datetime.datetime.now()]
                 txn_pool_file_name = '/storages/shards/'+str(shard_id)+'/transactions/pools/initial/'+TRANSACTION_FILE_NAME
                 File.append_data(txn_pool_file_name, data)
-    
- 
-   
-    
+                
 
     def create_transaction_and_append_to_transaction_pool():
         process_list = []

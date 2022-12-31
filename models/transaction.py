@@ -3,9 +3,8 @@ import datetime
 import os
 import sys
 import pandas as pd
-
-from generator_scripts.files_generator import FilesGenerator
 sys.path.append(os.path.abspath(os.curdir))
+from generator_scripts.files_generator import FilesGenerator
 from config import *
 from utility.shard import get_shard_for_account
 from utility.file import File
@@ -45,10 +44,15 @@ class Transaction:
 
         with open(txn_pool_initial_file_name, newline='') as f:
             reader = csv.reader(f)
-            row1 = next(reader) #TODO Ramesh return completed transaction message
-            row2=next(reader)
-        Transaction().move_transaction_from_initial_to_temporary_pool(shard_id,row2[0])
-        return row2
+            if(len(list(reader))>1):
+                 with open(txn_pool_initial_file_name, newline='') as fn:
+                    data_reader = csv.reader(fn)
+                    row1= next(data_reader)
+                    row2= next(data_reader)
+                    Transaction().move_transaction_from_initial_to_temporary_pool(shard_id,row2[0])
+                    return row2
+            else:
+                return None
     
     def move_transaction_from_initial_to_temporary_pool(self,shard_id, txn_id):
         transaction = Transaction()

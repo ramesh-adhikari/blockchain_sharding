@@ -7,10 +7,10 @@ from models.transaction import Transaction
 client_socket = None
 leader_shard_id = 0
 shard_id = 0
+terminate_transaction_processing = False
 
 
 def init_client(s_id,port,leader_s_id):
-    time.sleep(500 / 1000) # delaying client, so server is ready
     global client_socket, shard_id,leader_shard_id
     shard_id = s_id
     leader_shard_id = leader_s_id
@@ -19,9 +19,12 @@ def init_client(s_id,port,leader_s_id):
     client_socket.connect((HOST, port))
 
     while True:
+        if terminate_transaction_processing:
+            break
         for response in decode_response_from_server(client_socket):
             handle_response_from_server(response)
 
+    close_socket()
 
 def decode_response_from_server(client_socket):
     response_list = client_socket.recv(1024).decode().split(MESSAGE_SEPARATOR)
@@ -31,6 +34,8 @@ def decode_response_from_server(client_socket):
 
 def handle_response_from_server(response):
     print("Leader shard "+str(leader_shard_id)+" > Shard "+str(shard_id)+" : "+response)
+    global terminate_transaction_processing
+    print("Client "+str(shard_id)+" received message : "+response)
     if (response == "send_shard_id"):
         c_host, c_port = client_socket.getsockname()
         print("Shard "+str(shard_id)+" will communicate with leader shard "+str(leader_shard_id)+ " in port "+str(c_port))
@@ -43,6 +48,8 @@ def handle_response_from_server(response):
         commit_transaction(response)
     elif response.startswith("abort"):
         abort_transaction(response)
+    elif response.startswith("end_transaction"):
+        terminate_transaction_processing = True
 
 
 def check_balance(response):
@@ -68,7 +75,7 @@ def commit_transaction(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
     if(sub_transaction.type=="update"):
         Transaction.move_sub_transaction_to_committed_transaction(shard_id, sub_transaction.sub_txn_id)
-    send_message("committed"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id) 
+    send_message("committed"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
 
 
 def abort_transaction(response):
@@ -76,7 +83,7 @@ def abort_transaction(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
     if(sub_transaction.type=="update"):
         Transaction.remove_transaction_from_temporary_transaction(shard_id, sub_transaction.sub_txn_id)
-    send_message("aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id) 
+    send_message("aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
 
 
 def send_message(message):
