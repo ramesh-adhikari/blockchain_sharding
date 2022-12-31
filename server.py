@@ -104,7 +104,7 @@ def send_commit_message():
     for sub_transation in sub_transactions:
         send_message_to_port(
             convert_shard_id_to_connection_port(sub_transation.shard),
-            sub_transation.change_type("commit").to_message()
+            sub_transation.change_type("commit_"+sub_transation.type).to_message()
         )
 
 
@@ -115,7 +115,7 @@ def send_abort_message():
     for sub_transation in sub_transactions:
         send_message_to_port(
             convert_shard_id_to_connection_port(sub_transation.shard),
-           sub_transation.change_type("abort").to_message()
+           sub_transation.change_type("abort_"+sub_transation.type).to_message()
         )
 
 

@@ -31,7 +31,7 @@ def parallel_transactions_processing():
     for shard in SHARDS:
         if(shard[1]): # is leader
             init_process(True,shard[0],port,shard[0]) #server
-            time.sleep(200 / 1000) # delaying client, so server is ready
+            time.sleep(500 / 1000) # delaying client, so server is ready
             init_clients(port,shard[0])
             port += 1
 
