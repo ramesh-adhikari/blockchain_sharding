@@ -124,14 +124,15 @@ def process_next_transaction_in_new_thread(delay=20/1000):
 
 
 def process_transaction(transaction,delay):
-    global waiting_vote_count, sub_transactions
-    time.sleep(delay)
-    sub_transactions = split_transaction_to_sub_transactions(transaction)
-    update_state(State.PREPARING)
-    waiting_vote_count = len(sub_transactions)
-    for sub_transaction in sub_transactions:
-        send_message_to_port(convert_shard_id_to_connection_port(
-            sub_transaction.shard), sub_transaction.to_message())
+    if(len(transaction)>0):
+        global waiting_vote_count, sub_transactions
+        time.sleep(delay)
+        sub_transactions = split_transaction_to_sub_transactions(transaction)
+        update_state(State.PREPARING)
+        waiting_vote_count = len(sub_transactions)
+        for sub_transaction in sub_transactions:
+            send_message_to_port(convert_shard_id_to_connection_port(
+                sub_transaction.shard), sub_transaction.to_message())
 
 
 def send_message_to_connection(connection, message):
