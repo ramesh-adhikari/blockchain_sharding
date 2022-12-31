@@ -9,7 +9,7 @@ from utility.shard import get_number_of_leader_shards
 def generate_log(start_time):
     generate_report(start_time)
 
-def generate_report(start_time):
+def generate_report(start_time): #TODO Ramesh beautify this, add other parameters like per second
     print("Total Number of Shards : " +str(len(SHARDS)) 
         + " Total Number of Leader Shards : "+str(get_number_of_leader_shards())
         + " Total Transaction : " +str(TOTAL_NUMBER_OF_TRANSACTIONS)

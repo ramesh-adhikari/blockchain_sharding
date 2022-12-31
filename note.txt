@@ -22,3 +22,12 @@ To process total transaction with it took 15.253434181213379 seconds
 
 Total Number of Shards : 5 Total Number of Leader Shards : 4 Total Transaction : 100 Total Number of Subtransactions : 500 Total Accounts : 150 Conditions per transactions : 5
 To process total transaction with it took 11.109429121017456 seconds
+
+
+Process started 456564556
+Data generated 345643534
+Leader 1 started 435453
+Leader 2 
+
+Leader 5 finished
+program exited 435345345

@@ -1,6 +1,6 @@
 from multiprocessing import Value
 
-SHARDS = [(0,True),(1,False),(2,False),(3,False),(4,True)] #(id,is_leader)
+SHARDS = [(0,True),(1,False),(2,True),(3,False),(4,True),(5,False)] #(id,is_leader)
 
 NUMBER_OF_NODES = 100
 TOTAL_NUMBER_OF_TRANSACTIONS = 10
