@@ -75,5 +75,5 @@ def plot_show(type, x_axis, lock_based, optimal, our_protocol, x_label, y_label)
     plt.legend()
     plt.show()
 
-number_of_condition_vs_tsp()
+# number_of_shard_vs_latency()
 
