@@ -9,16 +9,22 @@ from utility.shard import get_number_of_leader_shards
 def generate_log(start_time):
     generate_report(start_time)
 
-def generate_report(start_time): #TODO Ramesh beautify this, add other parameters like per second
-    print("Total Number of Shards : " +str(len(SHARDS)) 
-        + " Total Number of Leader Shards : "+str(get_number_of_leader_shards())
-        + " Total Transaction : " +str(TOTAL_NUMBER_OF_TRANSACTIONS)
-        + " Total Number of Subtransactions : " +str(TOTAL_NUMBER_OF_TRANSACTIONS*(NUMBER_OF_CONDITIONS+2))
-        + " Total Accounts : " +str(NUMBER_OF_ACCOUNTS)
-        + " Conditions per transactions : " +str((NUMBER_OF_CONDITIONS+1))
+def generate_report(start_time):
+    total_time = "{}".format(time.time() - start_time)
+     #TODO Ramesh beautify this, add other parameters like per second
+    print("\n")
+    print("------------------------------ REPORT STARTING ... ------------------------------")
+    print("Total Number of Shards : " +str(len(SHARDS))+'\n'
+        + "Total Number of Leader Shards : "+str(get_number_of_leader_shards())+'\n'
+        + "Total Number of Transaction : " +str(TOTAL_NUMBER_OF_TRANSACTIONS)+'\n'
+        + "Total Number of Subtransactions : " +str(TOTAL_NUMBER_OF_TRANSACTIONS*(NUMBER_OF_CONDITIONS+2))+'\n'
+        + "Total Number of Accounts : " +str(NUMBER_OF_ACCOUNTS)+'\n'
+        + "Total Conditions per Transaction : " +str((NUMBER_OF_CONDITIONS+2))+'\n'
+        + "Total Processing time in seconds : "+ str(total_time)+'\n'
+        + "Transaction Per Second (Throughput) : "+ str(int(TOTAL_NUMBER_OF_TRANSACTIONS)/float(total_time))
     )
-    print("To process total transaction with it took {} seconds".format(time.time() - start_time))
-
+    print("------------------------------ REPORT END !!! ------------------------------")
+    print("\n")
 def number_of_shard_vs_tsp():
     # print('report rapid chain fig4')
     type='chart'
