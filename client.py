@@ -1,4 +1,5 @@
 import socket
+import time
 from config import HOST, MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR
 from models.sub_transaction import SubTransaction
 from models.transaction import Transaction
@@ -56,6 +57,7 @@ def handle_response_from_server(response):
 
 def check_balance(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
+    # check if lock exists, wait else add account to lock file, wait
     success = Transaction.has_amount(sub_transaction.account_no,sub_transaction.amount)
     if success:
         send_message("vote_commit"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
@@ -65,6 +67,7 @@ def check_balance(response):
 
 def update_balance(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
+    # check if lock exists, wait else add account to lock file, wait then retry after 10ms (config)
     success = Transaction.has_amount(sub_transaction.account_no,sub_transaction.amount)
     if success: 
         Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,sub_transaction.account_name,sub_transaction.amount,shard_id)
@@ -77,6 +80,7 @@ def commit_transaction(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
     if(sub_transaction.type=="commit_update"):
         Transaction.move_sub_transaction_to_committed_transaction(shard_id, sub_transaction.sub_txn_id)
+    #Release lock
     send_message("committed"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
 
 
@@ -85,6 +89,7 @@ def abort_transaction(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
     if(sub_transaction.type=="commit_abort"):
         Transaction.remove_transaction_from_temporary_transaction(shard_id, sub_transaction.sub_txn_id)
+    #Release lock
     send_message("aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
 
 
