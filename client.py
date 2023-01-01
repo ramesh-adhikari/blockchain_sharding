@@ -15,7 +15,11 @@ def init_client(s_id,port,leader_s_id):
     leader_shard_id = leader_s_id
 
     client_socket = socket.socket()
-    client_socket.connect((HOST, port))
+    try:
+        client_socket.connect((HOST, port))
+    except socket.error as e:
+        time.sleep(100/1000)
+        init_client(s_id,port,leader_s_id)
 
     while True:
         if terminate_transaction_processing:
@@ -32,9 +36,8 @@ def decode_response_from_server(client_socket):
 
 
 def handle_response_from_server(response):
-    print("Leader shard "+str(leader_shard_id)+" > Shard "+str(shard_id)+" : "+response)
     global terminate_transaction_processing
-    print("Client "+str(shard_id)+" received message : "+response)
+    print("Leader shard "+str(leader_shard_id)+" > Shard "+str(shard_id)+" : "+response)
     if (response == "send_shard_id"):
         c_host, c_port = client_socket.getsockname()
         print("Shard "+str(shard_id)+" will communicate with leader shard "+str(leader_shard_id)+ " in port "+str(c_port))
@@ -80,7 +83,7 @@ def commit_transaction(response):
 def abort_transaction(response):
     #TODO handle differet abort 1. insufficient balance -> transaction pool ->abort pool, sub_transaction -> remove, 2. version conflict -> transaction pool -> initial, sub_transaction -> remove
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
-    if(sub_transaction.type=="commit_update"):
+    if(sub_transaction.type=="commit_abort"):
         Transaction.remove_transaction_from_temporary_transaction(shard_id, sub_transaction.sub_txn_id)
     send_message("aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
 
