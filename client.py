@@ -1,5 +1,4 @@
 import socket
-import time
 from config import HOST, MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR
 from models.sub_transaction import SubTransaction
 from models.transaction import Transaction
@@ -76,7 +75,7 @@ def update_balance(response):
 
 def commit_transaction(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
-    if(sub_transaction.type=="update"):
+    if(sub_transaction.type=="commit_update"):
         Transaction.move_sub_transaction_to_committed_transaction(shard_id, sub_transaction.sub_txn_id)
     send_message("committed"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
 
@@ -84,7 +83,7 @@ def commit_transaction(response):
 def abort_transaction(response):
     #TODO handle differet abort 1. insufficient balance -> transaction pool ->abort pool, sub_transaction -> remove, 2. version conflict -> transaction pool -> initial, sub_transaction -> remove
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
-    if(sub_transaction.type=="update"):
+    if(sub_transaction.type=="commit_abort"):
         Transaction.remove_transaction_from_temporary_transaction(shard_id, sub_transaction.sub_txn_id)
     send_message("aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
 

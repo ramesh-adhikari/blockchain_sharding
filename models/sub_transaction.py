@@ -7,7 +7,7 @@ from config import MESSAGE_DATA_SEPARATOR
 
 class SubTransaction:
     def __init__(self,  type: str,txn_id: int, account_no: str,account_name: str, amount: int, shard: int, sub_txn_id: str) -> None:
-        self.type = type  # check or update or commit or abort
+        self.type = type  # check or update or commit_check or commit_update or abort_check or abort_update
         self.txn_id = txn_id
         self.account_no = account_no
         self.account_name = account_name
