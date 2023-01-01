@@ -27,7 +27,7 @@ def generate_general_report(start_time):
         + "Transaction Per Second (Throughput) : "+ str(int(TOTAL_NUMBER_OF_TRANSACTIONS)/float(total_time))
     )
     write_report_to_file(total_time)
-    print("------------------------------ REPORT END !!! ------------------------------")
+    print("------------------------------ REPORT END !!! ---------------------------------")
     print("\n")
     
 
