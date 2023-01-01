@@ -10,11 +10,14 @@ class FilesGenerator:
     # This function create the n (n= number of shards) temporary and committed files to store the transaction
     def create_shard_transaction_file():
         transaction_header = ['TXN_ID', 'SUB_TXN_ID', 'ACCOUNT_NUMBER', 'ACCOUNT_NAME', 'AMOUNT', 'TIMESTAMP']
+        lock_account_header = ['ACCOUNT_NUMBER','TIMESTAMP']
         for n_shard in range(len(SHARDS)):
             tmp_file_name = FilesGenerator().get_txn_file_path(n_shard, 'temporary')
             confirm_file_name = FilesGenerator().get_txn_file_path(n_shard, 'committed')
+            lock_account_file_name = FilesGenerator().get_txn_file_path(n_shard, 'lock')
             File.write_file(tmp_file_name,transaction_header)
             File.write_file(confirm_file_name,transaction_header)
+            File.write_file(lock_account_file_name,lock_account_header)
     
     def create_tmp_account_file():
         tmp_account_save_file_path = '/storages/GENERATED_ACCOUNTS.CSV'
@@ -45,6 +48,7 @@ class FilesGenerator:
         for shard in SHARDS:
             File.create_directory('/storages/shards/'+str(shard[0])+'/transactions/committed/')
             File.create_directory('/storages/shards/'+str(shard[0])+'/transactions/temporary/')
+            File.create_directory('/storages/shards/'+str(shard[0])+'/transactions/lock/')
             # if leader shard
             if(shard[1]):
                 File.create_directory('/storages/shards/'+str(shard[0])+'/transactions/pools/initial/')
