@@ -2,7 +2,7 @@
 import os
 import time
 from generator_scripts.bootstrap import Bootstrap
-from logger import generate_log
+from report import clear_reports, generate_report
 from models.transaction import Transaction
 import sys
 import multiprocessing
@@ -45,6 +45,9 @@ if __name__ == '__main__':
     if (len( sys.argv ) > 1):
         print("Removing old transactions data and generating new data for transaction processing ....")
         Bootstrap.run()
+        # clear report
+        if((len(sys.argv) >2) and sys.argv[2]=="clear-report"):
+            clear_reports()
     else:
         if(os.path.exists(os.path.abspath(os.curdir)+'/storages')):
             print('Start processing existing transactions!')
@@ -53,6 +56,6 @@ if __name__ == '__main__':
             exit()
 
     parallel_transactions_processing()
-    generate_log(start_time)
+    generate_report(start_time)
 
 

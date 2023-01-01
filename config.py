@@ -1,13 +1,12 @@
 from multiprocessing import Value
 
-SHARDS = [(0,True),(1,False),(2,True),(3,False),(4,True),(5,False)] #(id,is_leader)
+SHARDS = [(0,True),(1,False),(2,False),(3,False),(4,False)] #(id,is_leader)
 
-NUMBER_OF_NODES = 100
-TOTAL_NUMBER_OF_TRANSACTIONS = 60
-NUMBER_OF_ACCOUNTS = 120
+TOTAL_NUMBER_OF_TRANSACTIONS = 10
+NUMBER_OF_ACCOUNTS = 10
 DEFAULT_AMOUNT = 2000
 NUMBER_OF_CONDITIONS = 4
-
+TRANSACTION_TYPE = 'NO_LOCK' #NO_LOCK, LOCK, OUR_PROTOCOL
 
 CONDITION_HAS='__HAS__'
 CONDITION_AND='____AND____'

@@ -10,9 +10,12 @@ class File:
     
     def open_file(relative_path):
         file_path = os.path.abspath(os.curdir)+relative_path
-        with open(file_path) as o_file:
-            reader = csv.reader(o_file)
-            return list(reader)
+        if(os.path.exists(file_path)):
+            with open(file_path) as o_file:
+                reader = csv.reader(o_file)
+                return list(reader)
+        else:
+            None
     
     def write_file(relative_path, row):
         file_path = os.path.abspath(os.curdir)+relative_path
