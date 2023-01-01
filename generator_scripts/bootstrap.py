@@ -8,7 +8,8 @@ class Bootstrap:
     def run():
         # this method do the following
         # remove existing files to make fresh transaction
-        print('############ Start to generate initial files and storages...########')
+        print("\n")
+        print("---------------- START TO GENERATE INITIAL FILES AND STORAGES STARTING ... -------------------")
         FilesGenerator.remove_storage_directory()
         
         FilesGenerator.create_storage_directory()
@@ -17,13 +18,13 @@ class Bootstrap:
         # Generate the account file
        
         FilesGenerator.create_shard_transaction_file()
-        print("created shard transaction files")
+        print("Created shard transaction files")
 
         FilesGenerator.create_tmp_account_file()
-        print("created temporary account files")
+        print("Created temporary account files")
 
         FilesGenerator.create_transaction_pool_file()
-        print("created transaction pool files")
+        print("Created transaction pool files")
 
         AccountsAndTransactionGenerator.create_tmp_accounts_file()
         print("Generated temporary accounts")
@@ -34,7 +35,9 @@ class Bootstrap:
         print("Assigned each accounts to respective shards")
 
         AccountsAndTransactionGenerator.create_transaction_and_append_to_transaction_pool()
-        print("Generate transaction and append to transaction pool")
+        print("Generated transactions and appended to transaction pool")
 
         FilesGenerator.remove_tmp_accounts_file()
-        print('############ Completed generation of initial files and storages...########')
+        print("Removed temporary account files")
+        print("---------------- COMPLETED GENERATION OF INITIAL FILES AND STORAGES !!! --------------------")
+        print("\n")
