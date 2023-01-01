@@ -1,7 +1,6 @@
 import socket
 from _thread import *
 import socketserver
-import time
 from config import HOST, MESSAGE_SEPARATOR, SHARDS
 from models.state import State
 from models.sub_transaction import split_transaction_to_sub_transactions
@@ -130,17 +129,16 @@ def convert_connection_to_shard_id(connection):
     return "?"
 
 
-def process_next_transaction_in_new_thread(delay=0/1000): #delay for better visibility of transactions
+def process_next_transaction_in_new_thread(): #delay for better visibility of transactions
     start_new_thread(
         process_transaction,
-        (Transaction.get_transactions_from_transaction_pool(shard_id),delay)
+        (Transaction.get_transactions_from_transaction_pool(shard_id),)
     )
 
 
-def process_transaction(transaction,delay):
+def process_transaction(transaction):
     global waiting_vote_count, sub_transactions,terminate_transaction_processing
     if(transaction):
-        time.sleep(delay)
         sub_transactions = split_transaction_to_sub_transactions(transaction)
         update_state(State.PREPARING)
         waiting_vote_count = len(sub_transactions)
