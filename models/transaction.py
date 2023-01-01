@@ -148,4 +148,33 @@ class Transaction:
 
         transaction.to_csv(abs_file_path,index=False)
     
+
+    # Lock
+    def append_account_to_lock_file(shard_id, account_number, timestamp):
+        if(TRANSACTION_TYPE=='LOCK'):
+            shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'lock')
+            data = [account_number,timestamp]
+            File.append_data(shard_file_path, data)
+        else:
+            return
     
+    def is_amount_lock(shard_id, account_number):
+        if(TRANSACTION_TYPE=='LOCK'):
+            shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'lock')
+            shard_file_directory = os.path.abspath(os.curdir)+shard_file_path
+            data_frame = pd.read_csv(shard_file_directory)
+            account_exist = data_frame.loc[data_frame['ACCOUNT_NUMBER'] == account_number].count()
+            if(account_exist['ACCOUNT_NUMBER']>0):
+                return True
+            return False  
+        else:
+            return False
+
+    def remove_account_lock(shard_id, account_number):
+        if(TRANSACTION_TYPE=='LOCK'):
+            abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'lock')
+            account = pd.read_csv(abs_file_path)
+            account.drop(account.index[(account["ACCOUNT_NUMBER"] == account_number)],axis=0,inplace=True)
+            account.to_csv(abs_file_path,index=False)
+        else:
+            return
