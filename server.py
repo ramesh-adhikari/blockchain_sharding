@@ -7,7 +7,7 @@ from models.sub_transaction import split_transaction_to_sub_transactions
 from models.transaction import Transaction
 
 
-connections = list()
+client_sockets = list()
 shards = {}
 waiting_vote_count = 0
 state: State = State.NONE
@@ -19,28 +19,28 @@ terminate_transaction_processing = False
 server_socket = None
 
 
-def multi_threaded_client(connection):
-    global connections
-    connections.append(connection)
-    send_message_to_connection(connection, "send_shard_id")
+def multi_threaded_client(socket):
+    global client_sockets
+    client_sockets.append(socket)
+    send_message_to_socket(socket, "send_shard_id")
 
     while True:
         if terminate_transaction_processing:
             break
-        for response in decode_response_from_client(connection):
-            handle_response_from_client(connection, response)
+        for response in decode_response_from_client(socket):
+            handle_response_from_client(socket, response)
 
 
-def decode_response_from_client(connection):
-    response_list = connection.recv(1024).decode().split(MESSAGE_SEPARATOR)
+def decode_response_from_client(socket):
+    response_list = socket.recv(2048).decode().split(MESSAGE_SEPARATOR)
     response_list.pop()
     return response_list
 
 
-def handle_response_from_client(connection, response):
-    print("Shard "+convert_connection_to_shard_id(connection)+" > Leader shard "+str(shard_id)+" : "+response)
+def handle_response_from_client(socket, response):
+    print("Shard "+convert_socket_to_shard_id(socket)+" > Leader shard "+str(shard_id)+" : "+response)
     if (response.startswith("shard_id")):
-        register_shard_id(connection, response)
+        register_shard_id(socket, response)
     elif (response.startswith("vote_commit")):
         handle_vote_commit()
     elif (response.startswith("vote_abort")):
@@ -51,8 +51,8 @@ def handle_response_from_client(connection, response):
         handle_aborted()
 
 
-def register_shard_id(connection, response):
-    c_host, c_port = connection.getpeername()
+def register_shard_id(socket, response):
+    c_host, c_port = socket.getpeername()
     shards[response.replace("shard_id_", "")] = c_port
     if(len(shards)==len(SHARDS)):
         print("All "+str(len(SHARDS))+" shards connected to leader shard "+str(shard_id)+". Started processing transaction .....")
@@ -102,7 +102,7 @@ def send_commit_message():
     waiting_vote_count = len(sub_transactions)
     for sub_transation in sub_transactions:
         send_message_to_port(
-            convert_shard_id_to_connection_port(sub_transation.shard),
+            convert_shard_id_to_socket_port(sub_transation.shard),
             sub_transation.change_type("commit_"+sub_transation.type).to_message()
         )
 
@@ -113,16 +113,16 @@ def send_abort_message():
     waiting_vote_count = len(sub_transactions)
     for sub_transation in sub_transactions:
         send_message_to_port(
-            convert_shard_id_to_connection_port(sub_transation.shard),
+            convert_shard_id_to_socket_port(sub_transation.shard),
            sub_transation.change_type("abort_"+sub_transation.type).to_message()
         )
 
 
-def convert_shard_id_to_connection_port(shard_id):
+def convert_shard_id_to_socket_port(shard_id):
     return shards[str(shard_id)]
 
-def convert_connection_to_shard_id(connection):
-    c_host, c_port = connection.getpeername()
+def convert_socket_to_shard_id(socket):
+    c_host, c_port = socket.getpeername()
     for key, value in shards.items():
         if value == c_port:
             return str(key)
@@ -143,37 +143,37 @@ def process_transaction(transaction):
         update_state(State.PREPARING)
         waiting_vote_count = len(sub_transactions)
         for sub_transaction in sub_transactions:
-            send_message_to_port(convert_shard_id_to_connection_port(
+            send_message_to_port(convert_shard_id_to_socket_port(
                 sub_transaction.shard), sub_transaction.to_message())
     else:
         print("Leader shard "+str(shard_id)+" processed all transactions from transaction pool.")
-        send_to_all_clients("end_transaction")
+        send_to_all_clients("terminate_transaction_processing")
         terminate_transaction_processing = True
         close_server_socket()
-        #TODO close all connections
+        #TODO close all sockets
 
 def send_to_all_clients(message):
-    for connection_port in shards.values():
-        send_message_to_port(connection_port,message)
+    for socket_port in shards.values():
+        send_message_to_port(socket_port,message)
 
 
-def send_message_to_connection(connection, message):
-    connection.sendall(str.encode(message+MESSAGE_SEPARATOR))
+def send_message_to_socket(socket, message):
+    socket.sendall(str.encode(message+MESSAGE_SEPARATOR))
 
 
-def send_message_to_port(connection_port, message):
-    send_message_to_connection(get_connection(connection_port), message)
+def send_message_to_port(socket_port, message):
+    send_message_to_socket(get_socket(socket_port), message)
 
 
-def close_connection(connection_port):
-    get_connection(connection_port).close()
+def close_socket(socket_port):
+    get_socket(socket_port).close()
 
 
-def get_connection(connection_port):
-    for connection in connections:
-        c_host, c_port = connection.getpeername()
-        if (c_port == connection_port):
-            return connection
+def get_socket(socket_port):
+    for socket in client_sockets:
+        c_host, c_port = socket.getpeername()
+        if (c_port == socket_port):
+            return socket
     return None
 
 
