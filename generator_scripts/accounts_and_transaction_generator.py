@@ -6,7 +6,7 @@ import os
 import sys
 import string
 import random
-from random import randrange
+from random import choice, randrange
 
 from utility.shard import get_number_of_leader_shards, get_shard_for_account
 
@@ -69,11 +69,16 @@ class AccountsAndTransactionGenerator:
                 # print("Generated transaction pool for shard: "+str(shard_id))
                 data = File.open_file(tmp_account_save_file_path)
                 random_upper_bound=NUMBER_OF_ACCOUNTS-1
-                from_row = data[random.randint(1,random_upper_bound)]
-                to_row = data[random.randint(1,random_upper_bound)]
+                from_index = random.randint(1,random_upper_bound)
+                from_row = data[from_index]
+                to_index = choice([i for i in range(1,random_upper_bound) if i not in [from_index]])
+                to_row = data[to_index]
                 conditions=''
+                used_accounts = [from_index,to_index]
                 for con in range(NUMBER_OF_CONDITIONS):
-                    single_account = data[random.randint(1,random_upper_bound)]
+                    condition_index = choice([i for i in range(1,random_upper_bound) if i not in used_accounts])
+                    used_accounts.append(condition_index)
+                    single_account = data[condition_index]
                     if con!=(NUMBER_OF_CONDITIONS-1):
                         conditions+=single_account[ACCOUNT_INDEX_ACCOUNT_NUMBER]+CONDITION_HAS+str(randrange(int(single_account[ACCOUNT_INDEX_AMOUNT])))+CONDITION_AND
                     else:

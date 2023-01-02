@@ -21,7 +21,6 @@ class Transaction:
         
     def move_sub_transaction_to_committed_transaction(shard_id, sub_txn_id):
         # move pending transaction to committed transaction
-        print('move pending transaction to committed transaction')
         source_file = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
         destination_file = FilesGenerator().get_txn_file_path(shard_id, 'committed')
         transaction = Transaction()
@@ -158,7 +157,7 @@ class Transaction:
         else:
             return
     
-    def is_amount_lock(shard_id, account_number):
+    def is_account_locked(shard_id, account_number):
         if(TRANSACTION_TYPE=='LOCK'):
             shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'lock')
             shard_file_directory = os.path.abspath(os.curdir)+shard_file_path
