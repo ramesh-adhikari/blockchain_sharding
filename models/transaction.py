@@ -205,7 +205,7 @@ class Transaction:
         else:
             return
     
-    def get_timestamp_from_last_row_of_committed_rxn(shard_id, account_no):
+    def get_timestamp_from_last_row_of_committed_txn(shard_id, account_no):
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
             abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'committed')
             snapshot = pd.read_csv(abs_file_path)

@@ -51,12 +51,16 @@ def handle_response_from_server(response):
         commit_transaction(response)
     elif response.startswith("abort"):
         abort_transaction(response)
+    elif response.startswith("abort_rollback"):
+        abort_rollback_transaction(response)
     elif response.startswith("terminate_transaction_processing"):
         terminate_transaction_processing = True
 
 
 def check_balance(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
+    last_commited_txn_timestamp = Transaction.get_timestamp_from_last_row_of_committed_txn(sub_transaction.shard,sub_transaction.account_no)
+    Transaction.append_data_to_snapshot(sub_transaction.shard,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,last_commited_txn_timestamp)
     wait_for_lock(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id)
     lock_account(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.txn_timestamp)
     success = Transaction.has_amount(sub_transaction.account_no,sub_transaction.amount)
@@ -68,6 +72,8 @@ def check_balance(response):
 
 def update_balance(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
+    last_commited_txn_timestamp = Transaction.get_timestamp_from_last_row_of_committed_txn(sub_transaction.shard,sub_transaction.account_no)
+    Transaction.append_data_to_snapshot(sub_transaction.shard,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,last_commited_txn_timestamp)
     wait_for_lock(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id)
     lock_account(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.txn_timestamp)
     success = Transaction.has_amount(sub_transaction.account_no,sub_transaction.amount)
@@ -80,19 +86,30 @@ def update_balance(response):
 
 def commit_transaction(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
+    last_commited_txn_timestamp = Transaction.get_timestamp_from_last_row_of_committed_txn(sub_transaction.shard,sub_transaction.account_no)
+    transaction_snapshot_timestamp = Transaction.get_timestamp_from_snapshot(sub_transaction.shard,sub_transaction.sub_txn_id,sub_transaction.account_no)
+    if(last_commited_txn_timestamp!=transaction_snapshot_timestamp):
+        send_message("vote_abort_rollback"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
+        print(" **********######## ABORT ROLLBAAAAAAACK ")
     if(sub_transaction.type=="commit_update"):
         Transaction.move_sub_transaction_to_committed_transaction(shard_id, sub_transaction.sub_txn_id)
     send_message("committed"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
     release_lock(sub_transaction.account_no)
+    Transaction.remove_snapshot(sub_transaction.shard,sub_transaction.sub_txn_id,sub_transaction.account_no)
 
 
 def abort_transaction(response):
-    #TODO handle differet abort 1. insufficient balance -> transaction pool ->abort pool, sub_transaction -> remove, 2. version conflict -> transaction pool -> initial, sub_transaction -> remove
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
     if(sub_transaction.type=="abort_update"):
         Transaction.remove_transaction_from_temporary_transaction(shard_id, sub_transaction.sub_txn_id)
     send_message("aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
     release_lock(sub_transaction.account_no)
+    Transaction.remove_snapshot(sub_transaction.shard,sub_transaction.sub_txn_id,sub_transaction.account_no)
+
+def abort_rollback_transaction(response):
+    sub_transaction:SubTransaction = SubTransaction.from_message(response)
+    print("Client is aborting subtransaction "+sub_transaction.sub_txn_id)
+    #TODO Implement rollback functionality
 
 
 def send_message(message):

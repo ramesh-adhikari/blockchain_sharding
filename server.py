@@ -1,7 +1,7 @@
 import socket
 from _thread import *
 import socketserver
-from config import HOST, MESSAGE_SEPARATOR, SHARDS
+from config import HOST, MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR, SHARDS
 from models.state import State
 from models.sub_transaction import split_transaction_to_sub_transactions
 from models.transaction import Transaction
@@ -49,6 +49,8 @@ def handle_response_from_client(socket, response):
         handle_committed()
     elif (response.startswith("aborted")):
         handle_aborted()
+    elif (response.startswith("vote_abort_rollback")):
+        handle_vote_abort_rollback(response)
 
 
 def register_shard_id(socket, response):
@@ -116,6 +118,12 @@ def send_abort_message():
             convert_shard_id_to_socket_port(sub_transation.shard),
            sub_transation.change_type("abort_"+sub_transation.type).to_message()
         )
+
+def handle_vote_abort_rollback(response):
+    data = response.split(MESSAGE_DATA_SEPARATOR)
+    txn_id = data[1]
+    sub_txn_id = data[2]
+
 
 
 def convert_shard_id_to_socket_port(shard_id):
