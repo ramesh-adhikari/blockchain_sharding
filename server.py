@@ -83,6 +83,7 @@ def handle_committed():
             print(
                 "Leader shard "+str(shard_id)+" received commited message from all shards for transaction "+sub_transactions[0].txn_id+". Processing next transaction .....")
             update_state(State.NONE)
+            send_release_message()
             process_next_transaction_in_new_thread()
 
 
@@ -121,9 +122,38 @@ def send_abort_message():
 
 def handle_vote_abort_rollback(response):
     data = response.split(MESSAGE_DATA_SEPARATOR)
-    txn_id = data[1]
-    sub_txn_id = data[2]
+    txn_id = data[2]
+    #TODO send rollback to related transaction
+    send_abort_rollback_message()
 
+def send_abort_rollback_message():
+    global waiting_vote_count
+    update_state(State.ABORTING)
+    waiting_vote_count = len(sub_transactions)
+    for sub_transation in sub_transactions:
+        send_message_to_port(
+            convert_shard_id_to_socket_port(sub_transation.shard),
+           sub_transation.change_type("abort_rollback_"+sub_transation.type).to_message()
+        )
+
+def send_release_message():
+    for sub_transation in sub_transactions:
+        send_message_to_port(
+            convert_shard_id_to_socket_port(sub_transation.shard),
+           sub_transation.change_type("release").to_message()
+        )
+
+
+def handle_abort_rollbacked():
+    global waiting_vote_count
+    if (state == State.ABORTING):
+        waiting_vote_count -= 1
+        if (waiting_vote_count == 0):
+            Transaction.move_transaction_from_temporary_to_initial_pool(shard_id,sub_transactions[0].txn_id)
+            print(
+                "Leader shard "+str(shard_id)+" received abort rollbacked message from all shards for transaction "+sub_transactions[0].txn_id+". Processing next transaction .....")
+            update_state(State.NONE)
+            process_next_transaction_in_new_thread()
 
 
 def convert_shard_id_to_socket_port(shard_id):

@@ -191,22 +191,36 @@ class Transaction:
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
             abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
             snapshot = pd.read_csv(abs_file_path)
-            snapshot.drop(snapshot.index[(snapshot["SUB_TXN_ID"] == sub_txn_id) & (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
+            #TODO Do we really need sub_txn_id here?
+            # snapshot.drop(snapshot.index[(snapshot["SUB_TXN_ID"] == sub_txn_id) & (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
+            snapshot.drop(snapshot.index[ (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
             snapshot.to_csv(abs_file_path,index=False)
         else:
             return
-    
-    def get_timestamp_from_snapshot(shard_id, sub_txn_id, account_no):
+
+    def get_sub_txn_id_from_snapshot(shard_id, account_no):
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
             abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
             snapshot = pd.read_csv(abs_file_path)
-            selected_row = snapshot.loc[(snapshot["SUB_TXN_ID"] == sub_txn_id) & (snapshot["ACCOUNT_NUMBER"] == account_no)]
+            selected_row = snapshot.loc[(snapshot["ACCOUNT_NUMBER"] == account_no)]
+            if(len(selected_row)>0):
+                return selected_row['SUB_TXN_ID'][selected_row.index[0]]
+            else:
+                return None
+        else:
+            return None
+    
+    def get_timestamp_from_snapshot(shard_id, account_no):
+        if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
+            abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
+            snapshot = pd.read_csv(abs_file_path)
+            selected_row = snapshot.loc[(snapshot["ACCOUNT_NUMBER"] == account_no)]
             if(len(selected_row)>0):
                 return selected_row['TRANSACTION_GENERATED_TIMESTAMP'][selected_row.index[0]]
             else:
                 return None
         else:
-            return
+            return None
     
     def get_timestamp_from_last_row_of_committed_txn(shard_id, account_no):
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
