@@ -179,10 +179,10 @@ class Transaction:
             return
         
     # version control
-    def append_data_to_snapshot(shard_id, txn_id, sub_txn_id, account_number, last_txn_timestamp):
+    def append_data_to_snapshot(shard_id, txn_id, sub_txn_id, account_number, txn_generated_timestamp):
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
             shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
-            data = [txn_id, sub_txn_id, account_number, last_txn_timestamp]
+            data = [txn_id, sub_txn_id, account_number, txn_generated_timestamp]
             File.append_data(shard_file_path, data)
         else:
             return
@@ -201,7 +201,10 @@ class Transaction:
             abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
             snapshot = pd.read_csv(abs_file_path)
             selected_row = snapshot.loc[(snapshot["SUB_TXN_ID"] == sub_txn_id) & (snapshot["ACCOUNT_NUMBER"] == account_no)]
-            return selected_row['LAST_TRANSACTION_TIMESTAMP'][selected_row.index[0]]
+            if(len(selected_row)>0):
+                return selected_row['TRANSACTION_GENERATED_TIMESTAMP'][selected_row.index[0]]
+            else:
+                return None
         else:
             return
     
