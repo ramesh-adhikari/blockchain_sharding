@@ -11,7 +11,7 @@ class FilesGenerator:
     def create_shard_transaction_file():
         transaction_header = ['TXN_ID', 'SUB_TXN_ID', 'ACCOUNT_NUMBER', 'ACCOUNT_NAME', 'AMOUNT', 'TIMESTAMP']
         lock_account_header = ['ACCOUNT_NUMBER','TIMESTAMP']
-        snapshot_account_header = ['SHARD_ID', 'TXN_ID', 'SUB_TXN_ID', 'ACCOUNT_NUMBER', 'TRANSACTION_GENERATED_TIMESTAMP']
+        snapshot_account_header = ['SHARD_ID', 'TXN_ID', 'SUB_TXN_ID', 'ACCOUNT_NUMBER', 'TRANSACTION_SHARD_ID','TRANSACTION_GENERATED_TIMESTAMP']
         for n_shard in range(len(SHARDS)):
             tmp_file_name = FilesGenerator().get_txn_file_path(n_shard, 'temporary')
             confirm_file_name = FilesGenerator().get_txn_file_path(n_shard, 'committed')

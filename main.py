@@ -9,50 +9,52 @@ from server import init_server
 from config import *
 
 processes = []
+leaders = {}
 start_time = 0
 
-def init_process(server,shard_id, port,leader_shard_id):
-    if(server):
-        p = multiprocessing.Process(target=init_server, args=(shard_id,port))
-    else:
-        p = multiprocessing.Process(target=init_client, args=(shard_id,port,leader_shard_id))
-    processes.append(p)
-    p.start()
 
-def init_clients(port,leader_shard_id):
-    for shard in SHARDS:
-        init_process(False,shard[0],port,leader_shard_id) #client
-
-def parallel_transactions_processing():
-    global start_time
+def init_shards():
+    global start_time, leaders
+    leaders.clear()
     port = INITAIL_PORT
     for shard in SHARDS:
-        if(shard[1]): # is leader
-            init_process(True,shard[0],port,shard[0]) #server
-            init_clients(port,shard[0])
+        if (shard[1]):  # is_leader
+            p = multiprocessing.Process(
+                target=init_server,
+                args=(shard[0], port)
+            )
+            processes.append(p)
+            p.start()
+            leaders[str(shard[0])] = port
             port += 1
+
+    for shard in SHARDS:
+        p = multiprocessing.Process(
+            target=init_client,
+            args=(shard[0], leaders)
+        )
+        processes.append(p)
+        p.start()
 
     start_time = time.time()
 
     for process in processes:
         process.join()
 
-if __name__ == '__main__':
 
-    if (len( sys.argv ) > 1):
+if __name__ == '__main__':
+    if (len(sys.argv) > 1):
         print("Removing old transactions data and generating new data for transaction processing ....")
         Bootstrap.run()
         # clear report
-        if((len(sys.argv) >2) and sys.argv[2]=="clear-report"):
+        if ((len(sys.argv) > 2) and sys.argv[2] == "clear-report"):
             clear_reports()
     else:
-        if(os.path.exists(os.path.abspath(os.curdir)+'/storages')):
+        if (os.path.exists(os.path.abspath(os.curdir)+'/storages')):
             print('Start processing existing transactions!')
         else:
             print('Transactions and storages not found please run the command with extra parameters like: "python3 main.py storage"')
             exit()
 
-    parallel_transactions_processing()
+    init_shards()
     generate_report(start_time)
-
-

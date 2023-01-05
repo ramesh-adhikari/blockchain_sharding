@@ -60,8 +60,8 @@ def send_commit_message():
     update_state(State.COMMITING)
     waiting_vote_count = len(sub_transactions)
     for sub_transation in sub_transactions:
-        send_message_to_port(
-            convert_shard_id_to_socket_port(sub_transation.shard),
+        send_message_to_shard(
+            sub_transation.shard_id,
             sub_transation.change_type(
                 "commit_"+sub_transation.type).to_message()
         )
@@ -77,8 +77,8 @@ def send_abort_message():
     update_state(State.ABORTING)
     waiting_vote_count = len(sub_transactions)
     for sub_transation in sub_transactions:
-        send_message_to_port(
-            convert_shard_id_to_socket_port(sub_transation.shard),
+        send_message_to_shard(
+            sub_transation.shard_id,
             sub_transation.change_type(
                 "abort_"+sub_transation.type).to_message()
         )
@@ -122,8 +122,8 @@ def send_rollback_message():
     update_state(State.ROLLBACKING)
     waiting_vote_count = len(sub_transactions)
     for sub_transation in sub_transactions:
-        send_message_to_port(
-            convert_shard_id_to_socket_port(sub_transation.shard),
+        send_message_to_shard(
+            sub_transation.shard_id,
             sub_transation.change_type(
                 "rollback_"+sub_transation.type).to_message()
         )
@@ -144,8 +144,8 @@ def handle_rollbacked():
 
 def send_release_message():
     for sub_transation in sub_transactions:
-        send_message_to_port(
-            convert_shard_id_to_socket_port(sub_transation.shard),
+        send_message_to_shard(
+            sub_transation.shard_id,
             sub_transation.change_type("release").to_message()
         )
 
@@ -166,16 +166,21 @@ def process_next_transaction_in_new_thread():
 def process_transaction(transaction):
     global waiting_vote_count, sub_transactions, terminate_transaction_processing
     if (transaction):
-        sub_transactions = split_transaction_to_sub_transactions(transaction)
+        sub_transactions = split_transaction_to_sub_transactions(
+            transaction,
+            shard_id
+        )
         update_state(State.PREPARING)
         waiting_vote_count = len(sub_transactions)
         for sub_transaction in sub_transactions:
-            send_message_to_port(convert_shard_id_to_socket_port(
-                sub_transaction.shard), sub_transaction.to_message())
+            send_message_to_shard(
+                sub_transaction.shard_id,
+                sub_transaction.to_message()
+            )
     else:
         print("Leader shard "+str(shard_id) +
               " processed all transactions from transaction pool.")
-        send_message_to_all_clients("terminate_transaction_processing")
+        send_message_to_all_clients("terminate")
         terminate_transaction_processing = True
         close_server_socket()
 
@@ -183,6 +188,13 @@ def process_transaction(transaction):
 def send_message_to_all_clients(message):
     for socket_port in shards.values():
         send_message_to_port(socket_port, message)
+
+
+def send_message_to_shard(shard, message):
+    send_message_to_socket(
+        get_socket(convert_shard_id_to_socket_port(shard)),
+        message
+    )
 
 
 def send_message_to_socket(socket, message):
@@ -244,19 +256,23 @@ def init_server(s_id, port):
 def accept_new_client(socket):
     global client_sockets
     client_sockets.append(socket)
-    send_message_to_socket(socket, "send_shard_id")
+    send_message_to_socket(
+        socket,
+        "send_shard_id" + MESSAGE_DATA_SEPARATOR+str(shard_id)
+    )
 
-    while True:
-        if terminate_transaction_processing:
-            break
+    while terminate_transaction_processing == False:
         for response in decode_response_from_client(socket):
             handle_response_from_client(socket, response)
 
 
 def decode_response_from_client(socket):
-    response_list = socket.recv(2048).decode().split(MESSAGE_SEPARATOR)
-    response_list.pop()
-    return response_list
+    try:
+        response_list = socket.recv(2048).decode().split(MESSAGE_SEPARATOR)
+        response_list.pop()
+        return response_list
+    except:
+        return []
 
 
 def close_server_socket():

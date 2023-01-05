@@ -179,10 +179,10 @@ class Transaction:
             return
         
     # version control
-    def append_data_to_snapshot(shard_id, txn_id, sub_txn_id, account_number, txn_generated_timestamp):
+    def append_data_to_snapshot(shard_id, txn_id, sub_txn_id, account_number,txn_shard_id, txn_generated_timestamp):
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
             shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
-            data = [shard_id, txn_id, sub_txn_id, account_number, txn_generated_timestamp]
+            data = [shard_id, txn_id, sub_txn_id, account_number, txn_shard_id, txn_generated_timestamp]
             File.append_data(shard_file_path, data)
         else:
             return
@@ -209,6 +209,7 @@ class Transaction:
                             selected_row['TXN_ID'] [selected_row.index[0]],
                             selected_row['SUB_TXN_ID'] [selected_row.index[0]],
                             selected_row['ACCOUNT_NUMBER'] [selected_row.index[0]],
+                            selected_row['TRANSACTION_SHARD_ID'] [selected_row.index[0]],
                             selected_row['TRANSACTION_GENERATED_TIMESTAMP'] [selected_row.index[0]],
                         ]
             else:
