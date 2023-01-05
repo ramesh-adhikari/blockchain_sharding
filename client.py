@@ -51,51 +51,47 @@ def handle_response_from_server(response):
         commit_transaction(response)
     elif response.startswith("abort"):
         abort_transaction(response)
-    elif response.startswith("abort_rollback"):
+    elif response.startswith("rollback"):
         abort_rollback_transaction(response)
+    elif response.startswith("release"):
+        release_snapshot(response)
     elif response.startswith("terminate_transaction_processing"):
         terminate_transaction_processing = True
 
 
 def check_balance(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
-    last_commited_txn_timestamp = Transaction.get_timestamp_from_last_row_of_committed_txn(sub_transaction.shard,sub_transaction.account_no)
-    Transaction.append_data_to_snapshot(sub_transaction.shard,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,last_commited_txn_timestamp)
-    wait_for_lock(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id)
-    lock_account(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.txn_timestamp)
-    success = Transaction.has_amount(sub_transaction.account_no,sub_transaction.amount)
-    if success:
-        send_message("vote_commit"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
-    else:
-        send_message("vote_abort"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
+    #TODO check constraints befor checking snapshot
+    if check_snapshot(sub_transaction):
+        wait_for_lock(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id)
+        lock_account(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.txn_timestamp)
+        success = Transaction.has_amount(sub_transaction.account_no,sub_transaction.amount)
+        if success:
+            send_message("vote_commit"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
+        else:
+            send_message("vote_abort"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
 
 
 def update_balance(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
-    last_commited_txn_timestamp = Transaction.get_timestamp_from_last_row_of_committed_txn(sub_transaction.shard,sub_transaction.account_no)
-    Transaction.append_data_to_snapshot(sub_transaction.shard,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,last_commited_txn_timestamp)
-    wait_for_lock(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id)
-    lock_account(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.txn_timestamp)
-    success = Transaction.has_amount(sub_transaction.account_no,sub_transaction.amount)
-    if success: 
-        Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,sub_transaction.account_name,sub_transaction.amount,shard_id)
-        send_message("vote_commit"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
-    else:
-        send_message("vote_abort"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
+    if check_snapshot(sub_transaction):
+        wait_for_lock(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id)
+        lock_account(sub_transaction.account_no,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.txn_timestamp)
+        success = Transaction.has_amount(sub_transaction.account_no,sub_transaction.amount)
+        if success: 
+            Transaction.append_sub_transaction_to_temporary_file(sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,sub_transaction.account_name,sub_transaction.amount,shard_id)
+            send_message("vote_commit"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
+        else:
+            send_message("vote_abort"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
 
 
 def commit_transaction(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
-    last_commited_txn_timestamp = Transaction.get_timestamp_from_last_row_of_committed_txn(sub_transaction.shard,sub_transaction.account_no)
-    transaction_snapshot_timestamp = Transaction.get_timestamp_from_snapshot(sub_transaction.shard,sub_transaction.sub_txn_id,sub_transaction.account_no)
-    if(last_commited_txn_timestamp!=transaction_snapshot_timestamp):
-        send_message("vote_abort_rollback"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
-        print(" **********######## ABORT ROLLBAAAAAAACK ")
-    if(sub_transaction.type=="commit_update"):
-        Transaction.move_sub_transaction_to_committed_transaction(shard_id, sub_transaction.sub_txn_id)
-    send_message("committed"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
-    release_lock(sub_transaction.account_no)
-    Transaction.remove_snapshot(sub_transaction.shard,sub_transaction.sub_txn_id,sub_transaction.account_no)
+    if check_snapshot(sub_transaction):
+        if(sub_transaction.type=="commit_update"):
+            Transaction.move_sub_transaction_to_committed_transaction(shard_id, sub_transaction.sub_txn_id)
+        send_message("committed"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
+        release_lock(sub_transaction.account_no)
 
 
 def abort_transaction(response):
@@ -103,13 +99,41 @@ def abort_transaction(response):
     if(sub_transaction.type=="abort_update"):
         Transaction.remove_transaction_from_temporary_transaction(shard_id, sub_transaction.sub_txn_id)
     send_message("aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
+    release_snapshot(response)
     release_lock(sub_transaction.account_no)
-    Transaction.remove_snapshot(sub_transaction.shard,sub_transaction.sub_txn_id,sub_transaction.account_no)
 
 def abort_rollback_transaction(response):
     sub_transaction:SubTransaction = SubTransaction.from_message(response)
-    print("Client is aborting subtransaction "+sub_transaction.sub_txn_id)
-    #TODO Implement rollback functionality
+    if(sub_transaction.type=="rollback_update"):
+        Transaction.remove_transaction_from_temporary_transaction(shard_id, sub_transaction.sub_txn_id)
+    send_message("rollbacked"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id)
+    release_snapshot(response)
+    release_lock(sub_transaction.account_no)
+
+def release_snapshot(response):
+    sub_transaction:SubTransaction = SubTransaction.from_message(response)
+    Transaction.remove_snapshot(shard_id,sub_transaction.sub_txn_id,sub_transaction.account_no)
+
+
+def check_snapshot(sub_transaction:SubTransaction):
+    if(TRANSACTION_TYPE!='OUR_PROTOCOL'):
+        return True
+    snapshot = Transaction.get_row_from_snapshot(shard_id,sub_transaction.account_no)
+    if(snapshot==None):
+        Transaction.append_data_to_snapshot(shard_id,sub_transaction.txn_id,sub_transaction.sub_txn_id,sub_transaction.account_no,sub_transaction.txn_timestamp)
+        return True
+    elif(snapshot[2]==sub_transaction.sub_txn_id):
+        return True
+    else:
+        snapshot_timestamp = snapshot[4]
+        if(snapshot_timestamp>sub_transaction.txn_timestamp):
+            #TODO instead of passed sub_txn_id and txn_id, send txn_id and sub_txn_id from snapshot
+            print(" ==== ==== ===== ==== ==== === ====  Send message to another leader shard "+str(snapshot))
+            # send_message("vote_rollback"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id)
+            return True
+        else:
+            send_message("vote_rollback"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id)
+            return False
 
 
 def send_message(message):
