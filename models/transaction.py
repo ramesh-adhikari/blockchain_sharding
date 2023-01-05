@@ -2,6 +2,7 @@ import csv
 import datetime
 import os
 import sys
+import time
 import pandas as pd
 sys.path.append(os.path.abspath(os.curdir))
 from generator_scripts.files_generator import FilesGenerator
@@ -100,7 +101,15 @@ class Transaction:
     def move_transaction(self, source_file, destination_file, txn_id, type='TRANSACTION_POOL'):
         source_file = source_file
         destination_file = destination_file
-        transaction = pd.read_csv(os.path.abspath(os.curdir)+source_file)
+
+        #TODO Check pd read implementation
+        transaction = None
+        while True:
+            try:
+                transaction = pd.read_csv(os.path.abspath(os.curdir)+source_file)
+                break
+            except:
+                time.sleep(5/1000)
 
         if(type=='TRANSACTION'):
             selected_rows = transaction.loc[transaction['SUB_TXN_ID'] == txn_id]
@@ -138,7 +147,14 @@ class Transaction:
     
     def delete_row_by_txn_id(self, file_path, txn_id, type):
         abs_file_path = os.path.abspath(os.curdir)+file_path
-        transaction = pd.read_csv(abs_file_path)
+        #TODO Check pd read implementation
+        transaction = None
+        while True:
+            try:
+                transaction = pd.read_csv(abs_file_path)
+                break
+            except:
+                time.sleep(5/1000)
 
         if(type=='TRANSACTION'):
             transaction.drop(transaction.index[(transaction["SUB_TXN_ID"] == txn_id)],axis=0,inplace=True)
@@ -190,7 +206,15 @@ class Transaction:
     def remove_snapshot(shard_id, sub_txn_id, account_no):
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
             abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
-            snapshot = pd.read_csv(abs_file_path)
+            #TODO Check pd read implementation
+            snapshot = None
+            while True:
+                try:
+                    snapshot = pd.read_csv(abs_file_path)
+                    break
+                except:
+                    time.sleep(5/1000)
+
             #TODO Do we really need sub_txn_id here?
             # snapshot.drop(snapshot.index[(snapshot["SUB_TXN_ID"] == sub_txn_id) & (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
             snapshot.drop(snapshot.index[ (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
@@ -201,7 +225,15 @@ class Transaction:
     def get_row_from_snapshot(shard_id, account_no):
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
             abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
-            snapshot = pd.read_csv(abs_file_path)
+            #TODO Check pd read implementation
+            snapshot = None
+            while True:
+                try:
+                    snapshot = pd.read_csv(abs_file_path)
+                    break
+                except:
+                    time.sleep(5/1000)
+               
             selected_row = snapshot.loc[(snapshot["ACCOUNT_NUMBER"] == account_no)]
             if(len(selected_row)>0):
                 return [

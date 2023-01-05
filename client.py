@@ -1,7 +1,8 @@
 import socket
 from _thread import *
+import sys
 import time
-from config import ACCOUNT_LOCK_RETRY_TIME_MS, HOST, MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR, TRANSACTION_FILE_NAME, TRANSACTION_TYPE
+from config import *
 from models.sub_transaction import SubTransaction
 from models.transaction import Transaction
 
@@ -10,53 +11,6 @@ leaders = {}
 shard_id = 0
 terminate_message_count = 0
 current_leader_shard = 0
-
-
-def connect_to_leader(leader_shard_id, port):
-    client_socket = socket.socket()
-    try:
-        client_socket.connect((HOST, port))
-    except socket.error as e:
-        time.sleep(100/1000)
-        connect_to_leader(leader_shard_id, port)
-
-    sockets.append(client_socket)
-
-    while True:
-        for response in decode_response_from_server(client_socket):
-            print("Leader shard "+str(leader_shard_id) +
-                  " > Shard "+str(shard_id)+" : "+response)
-            handle_response_from_server(response)
-
-
-def init_client(_shard_id, _leaders):
-    global sockets, shard_id, leaders
-    shard_id = _shard_id
-    leaders = _leaders
-
-    sockets.clear()
-    for leader_shard_id, port in leaders.items():
-        start_new_thread(
-            connect_to_leader,
-            (leader_shard_id, port,)
-        )
-
-    while terminate_message_count != len(leaders):
-        continue
-
-    close_sockets()
-    print("Shard "+str(shard_id) + " received terminate message from all leaders(" +
-          str(len(leaders))+"). Terminating shard .....")
-
-
-def decode_response_from_server(client_socket):
-    try:
-        response_list = client_socket.recv(
-            2048).decode().split(MESSAGE_SEPARATOR)
-        response_list.pop()
-        return response_list
-    except:
-        return []
 
 
 def handle_response_from_server(response):
@@ -152,7 +106,8 @@ def abort_transaction(response):
             shard_id, sub_transaction.sub_txn_id)
     send_message_to_shard(
         sub_transaction.txn_shard_id,
-        "aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
+        "aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
+        MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
     )
     release_snapshot(response)
     release_lock(sub_transaction.account_no)
@@ -173,6 +128,9 @@ def abort_rollback_transaction(response):
 
 
 def send_message_to_socket(socket, message):
+    if (WRITE_LOG_TO_FILE):
+        print("Shard "+str(convert_socket_to_shard_id(socket)) +
+              " > Leader shard "+str(shard_id)+" : "+message)
     socket.sendall(str.encode(message+MESSAGE_SEPARATOR))
 
 
@@ -193,15 +151,26 @@ def convert_shard_id_to_socket_port(shard_id):
 
 def get_socket(socket_port):
     for socket in sockets:
-        c_host, c_port = socket.getpeername()
-        if (c_port == socket_port):
+        if (get_port_from_socket(socket) == socket_port):
             return socket
     return None
 
 
-def close_sockets():
-    for client_socket in sockets:
-        client_socket.close()
+def convert_socket_to_shard_id(socket):
+    port = get_port_from_socket(socket)
+    for key, value in leaders.items():
+        if value == port:
+            return str(key)
+    return "?"
+
+
+def get_port_from_socket(socket):
+    try:
+        _host, _port = socket.getpeername()
+        return _port
+    except:
+        time.sleep(1/1000)
+        return get_port_from_socket(socket)
 
 
 def check_snapshot(sub_transaction: SubTransaction):
@@ -227,7 +196,7 @@ def check_snapshot(sub_transaction: SubTransaction):
         snapshot_timestamp = snapshot[5]
         if (snapshot_timestamp > sub_transaction.txn_timestamp):
             send_message_to_shard(
-                snapshot[4],
+                int(snapshot[4]),
                 "vote_rollback"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
                 MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
             )
@@ -257,6 +226,11 @@ def release_snapshot(response):
         shard_id,
         sub_transaction.sub_txn_id,
         sub_transaction.account_no
+    )
+    send_message_to_shard(
+        sub_transaction.txn_shard_id,
+        "released"+MESSAGE_DATA_SEPARATOR +
+        sub_transaction.txn_id + MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
     )
 
 
@@ -294,3 +268,58 @@ def release_lock(account_number):
         return
     print("Account lock released to "+account_number+" in shard "+str(shard_id))
     Transaction.remove_account_lock(shard_id, account_number)
+
+
+def init_client(_shard_id, _leaders):
+    if (WRITE_LOG_TO_FILE):
+        sys.stdout = open("logs/shard_"+str(_shard_id) + ".log", "w")
+
+    global sockets, shard_id, leaders
+    shard_id = _shard_id
+    leaders = _leaders
+
+    sockets.clear()
+    for leader_shard_id, port in leaders.items():
+        start_new_thread(
+            connect_to_leader,
+            (leader_shard_id, port,)
+        )
+
+    while terminate_message_count != len(leaders):
+        continue
+
+    close_sockets()
+    print("Shard "+str(shard_id) + " received terminate message from all leaders(" +
+          str(len(leaders))+"). Terminating shard .....")
+
+
+def connect_to_leader(leader_shard_id, port):
+    client_socket = socket.socket()
+    try:
+        client_socket.connect((HOST, port))
+    except socket.error as e:
+        time.sleep(100/1000)
+        connect_to_leader(leader_shard_id, port)
+
+    sockets.append(client_socket)
+
+    while True:
+        for response in decode_response_from_server(client_socket):
+            print("Leader shard "+str(leader_shard_id) +
+                  " > shard "+str(shard_id)+" : "+response)
+            handle_response_from_server(response)
+
+
+def decode_response_from_server(client_socket):
+    try:
+        response_list = client_socket.recv(
+            2048).decode().split(MESSAGE_SEPARATOR)
+        response_list.pop()
+        return response_list
+    except:
+        return []
+
+
+def close_sockets():
+    for client_socket in sockets:
+        client_socket.close()

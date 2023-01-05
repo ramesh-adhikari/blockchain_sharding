@@ -1,7 +1,9 @@
 import socket
 from _thread import *
 import socketserver
-from config import HOST, MESSAGE_DATA_SEPARATOR, MESSAGE_SEPARATOR, SHARDS
+import sys
+import time
+from config import *
 from models.state import State
 from models.sub_transaction import split_transaction_to_sub_transactions
 from models.transaction import Transaction
@@ -39,8 +41,7 @@ def handle_response_from_client(socket, response):
 
 
 def register_shard_id(socket, response):
-    c_host, c_port = socket.getpeername()
-    shards[response.replace("shard_id_", "")] = c_port
+    shards[response.replace("shard_id_", "")] = get_port_from_socket(socket)
     if (len(shards) == len(SHARDS)):
         print("All "+str(len(SHARDS))+" shards connected to leader shard " +
               str(shard_id)+". Started processing transaction .....")
@@ -166,6 +167,8 @@ def process_next_transaction_in_new_thread():
 def process_transaction(transaction):
     global waiting_vote_count, sub_transactions, terminate_transaction_processing
     if (transaction):
+        print("Leader shard "+str(shard_id) +
+              " processing transaction "+str(transaction))
         sub_transactions = split_transaction_to_sub_transactions(
             transaction,
             shard_id
@@ -186,6 +189,8 @@ def process_transaction(transaction):
 
 
 def send_message_to_all_clients(message):
+    print("Leader shard "+str(shard_id) +
+          " sending terminate message to all shards.")
     for socket_port in shards.values():
         send_message_to_port(socket_port, message)
 
@@ -198,6 +203,9 @@ def send_message_to_shard(shard, message):
 
 
 def send_message_to_socket(socket, message):
+    if (WRITE_LOG_TO_FILE):
+        print("Leader shard "+str(shard_id) +
+              " > Shard "+convert_socket_to_shard_id(socket)+" : "+message)
     socket.sendall(str.encode(message+MESSAGE_SEPARATOR))
 
 
@@ -207,8 +215,7 @@ def send_message_to_port(socket_port, message):
 
 def get_socket(socket_port):
     for socket in client_sockets:
-        c_host, c_port = socket.getpeername()
-        if (c_port == socket_port):
+        if (get_port_from_socket(socket) == socket_port):
             return socket
     return None
 
@@ -218,20 +225,29 @@ def convert_shard_id_to_socket_port(shard_id):
 
 
 def convert_socket_to_shard_id(socket):
-    c_host, c_port = socket.getpeername()
+    c_port = get_port_from_socket(socket)
     for key, value in shards.items():
         if value == c_port:
             return str(key)
     return "?"
 
 
-def init_server(s_id, port):
-    global shard_id, server_socket
+def get_port_from_socket(socket):
+    try:
+        _host, _port = socket.getpeername()
+        return _port
+    except:
+        time.sleep(1/1000)
+        return get_port_from_socket(socket)
+
+
+def init_server(_shard_id, port):
+    if (WRITE_LOG_TO_FILE):
+        sys.stdout = open("logs/leader_shard_"+str(_shard_id) + ".log", "w")
 
     global shard_id, terminate_transaction_processing, server_socket, shards
     connected_sockets = 0
-
-    shard_id = s_id
+    shard_id = _shard_id
     server_socket = socket.socket()
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 

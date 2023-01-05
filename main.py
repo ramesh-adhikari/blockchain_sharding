@@ -1,7 +1,7 @@
 import os
 import time
 from generator_scripts.bootstrap import Bootstrap
-from report import clear_reports, generate_report
+from report import clear_log_files, clear_reports, generate_report
 import sys
 import multiprocessing
 from client import init_client
@@ -55,6 +55,15 @@ if __name__ == '__main__':
         else:
             print('Transactions and storages not found please run the command with extra parameters like: "python3 main.py storage"')
             exit()
+
+    if (WRITE_LOG_TO_FILE):
+        if not os.path.exists('logs'):
+            os.makedirs('logs')
+        clear_log_files()
+        print("Processing transactions ...")
+        print(
+            "Please go through 'logs' directory for output after transaction is processed.")
+        print("Disable 'WRITE_LOG_TO_FILE' flag on config file to print output to console instead of file.")
 
     init_shards()
     generate_report(start_time)
