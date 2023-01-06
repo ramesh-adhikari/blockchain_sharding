@@ -14,18 +14,22 @@ from utility.file import File
 class Transaction:
     
     def append_sub_transaction_to_temporary_file(txn_id, sub_txn_id, account_number, account_name, amount,shard_id):
+        print("Appending "+sub_txn_id)
         shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
         timestamp = datetime.datetime.now()
         data = [txn_id, sub_txn_id, account_number, account_name, amount, timestamp]
         File.append_data(shard_file_path, data)
+        print("Appended "+sub_txn_id)
         
         
     def move_sub_transaction_to_committed_transaction(shard_id, sub_txn_id):
         # move pending transaction to committed transaction
+        print("Moving "+sub_txn_id)
         source_file = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
         destination_file = FilesGenerator().get_txn_file_path(shard_id, 'committed')
         transaction = Transaction()
         transaction.move_transaction(source_file, destination_file, sub_txn_id, 'TRANSACTION')
+        print("Moved "+sub_txn_id)
     
     def remove_transaction_from_temporary_transaction(shard_id, sub_txn_id):
         temporary_pool_txn_path = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
@@ -48,9 +52,27 @@ class Transaction:
             except:
                 time.sleep(5/1000)
             
-        selected_row = data.loc[(data["SUB_TXN_ID"] == sub_txn_id)]
-        if(len(selected_row)>0):
-            return True
+        if("SUB_TXN_ID" in data.index): #prevent key error
+            selected_row = data.loc[(data["SUB_TXN_ID"] == sub_txn_id)]
+            if(len(selected_row)>0):
+                return True
+        else:
+            return False
+
+    def is_temporary_transaction(shard_id, sub_txn_id):
+        abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'temporary')
+        #TODO Check pd read implementation
+        data = None
+        while True:
+            try:
+                data = pd.read_csv(abs_file_path)
+                break
+            except:
+                time.sleep(5/1000)
+        if("SUB_TXN_ID" in data.index): #prevent key error
+            selected_row = data.loc[(data["SUB_TXN_ID"] == sub_txn_id)]
+            if(len(selected_row)>0):
+                return True
         else:
             return False
         

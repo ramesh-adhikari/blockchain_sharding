@@ -26,7 +26,13 @@ def handle_response_from_client(socket, response):
           " > Leader shard "+str(shard_id)+" : "+response)
     if (response.startswith("shard_id")):
         register_shard_id(socket, response)
-    elif (response.startswith("vote_commit")):
+        return
+
+    if (not check_if_current_transaction(response) and sub_transactions):
+        print("Leader shard "+str(shard_id)+" is currently processing transaction " +
+              sub_transactions[0].txn_id+". So received message is ignored. "+response)
+        return
+    if (response.startswith("vote_commit")):
         handle_vote_commit()
     elif (response.startswith("vote_abort")):
         handle_vote_abort()
@@ -151,6 +157,10 @@ def send_release_message():
             sub_transation.shard_id,
             sub_transation.change_type("release").to_message()
         )
+
+
+def check_if_current_transaction(response):
+    return (sub_transactions and sub_transactions[0].txn_id in response)
 
 
 def update_state(_state: State):
@@ -285,7 +295,7 @@ def accept_new_client(socket):
 
 def decode_response_from_client(socket):
     try:
-        response_list = socket.recv(2048).decode().split(MESSAGE_SEPARATOR)
+        response_list = socket.recv(4096).decode().split(MESSAGE_SEPARATOR)
         response_list.pop()
         return response_list
     except:

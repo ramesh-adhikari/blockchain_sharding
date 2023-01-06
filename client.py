@@ -69,10 +69,19 @@ def update_balance(response):
         sub_transaction.account_no, sub_transaction.amount)
     if success:
         if check_snapshot(sub_transaction):
-            check_lock(sub_transaction.account_no, sub_transaction.txn_id,
-                       sub_transaction.sub_txn_id, sub_transaction.txn_timestamp)
+            check_lock(
+                sub_transaction.account_no,
+                sub_transaction.txn_id,
+                sub_transaction.sub_txn_id,
+                sub_transaction.txn_timestamp
+            )
             Transaction.append_sub_transaction_to_temporary_file(
-                sub_transaction.txn_id, sub_transaction.sub_txn_id, sub_transaction.account_no, sub_transaction.account_name, sub_transaction.amount, shard_id)
+                sub_transaction.txn_id,
+                sub_transaction.sub_txn_id,
+                sub_transaction.account_no,
+                sub_transaction.account_name,
+                sub_transaction.amount, shard_id
+            )
             send_message_to_shard(
                 sub_transaction.txn_shard_id, "vote_commit"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
                 MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
@@ -90,7 +99,9 @@ def commit_transaction(response):
     if check_snapshot(sub_transaction):
         if (sub_transaction.type == "commit_update"):
             Transaction.move_sub_transaction_to_committed_transaction(
-                shard_id, sub_transaction.sub_txn_id)
+                shard_id,
+                sub_transaction.sub_txn_id
+            )
         send_message_to_shard(
             sub_transaction.txn_shard_id,
             "committed"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
@@ -102,16 +113,7 @@ def commit_transaction(response):
 def abort_transaction(response):
     sub_transaction: SubTransaction = SubTransaction.from_message(response)
     if (sub_transaction.type == "abort_update"):
-        if (Transaction.is_commited_transaction(shard_id, sub_transaction.sub_txn_id)):
-            Transaction.remove_transaction_from_commited_transaction(
-                shard_id,
-                sub_transaction.sub_txn_id
-            )
-        else:
-            Transaction.remove_transaction_from_temporary_transaction(
-                shard_id,
-                sub_transaction.sub_txn_id
-            )
+        remove_transaction(sub_transaction)
     send_message_to_shard(
         sub_transaction.txn_shard_id,
         "aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
@@ -124,9 +126,7 @@ def abort_transaction(response):
 def abort_rollback_transaction(response):
     sub_transaction: SubTransaction = SubTransaction.from_message(response)
     if (sub_transaction.type == "rollback_update"):
-        # TODO remove from commited if transaction is commited
-        Transaction.remove_transaction_from_temporary_transaction(
-            shard_id, sub_transaction.sub_txn_id)
+        remove_transaction(sub_transaction)
     send_message_to_shard(
         sub_transaction.txn_shard_id,
         "rollbacked"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
@@ -136,10 +136,26 @@ def abort_rollback_transaction(response):
     release_lock(sub_transaction.account_no)
 
 
+def remove_transaction(sub_transaction: SubTransaction):
+    if (Transaction.is_commited_transaction(shard_id, sub_transaction.sub_txn_id)):
+        Transaction.remove_transaction_from_commited_transaction(
+            shard_id,
+            sub_transaction.sub_txn_id
+        )
+    elif (Transaction.is_temporary_transaction(shard_id, sub_transaction.sub_txn_id)):
+        Transaction.remove_transaction_from_temporary_transaction(
+            shard_id,
+            sub_transaction.sub_txn_id
+        )
+    else:
+        print("Shard "+str(shard_id)+" could not find sub-transaction "+sub_transaction.sub_txn_id +
+              " in both committed and temporary transactions. Seems like it is yet to be processed.")
+
+
 def send_message_to_socket(socket, message):
     if (WRITE_LOG_TO_FILE):
-        print("Shard "+str(convert_socket_to_shard_id(socket)) +
-              " > Leader shard "+str(shard_id)+" : "+message)
+        print("Shard " + str(shard_id) +
+              " > Leader shard "+str(convert_socket_to_shard_id(socket))+" : "+message)
     socket.sendall(str.encode(message+MESSAGE_SEPARATOR))
 
 
@@ -241,11 +257,7 @@ def release_snapshot(response):
         sub_transaction.sub_txn_id,
         sub_transaction.account_no
     )
-    send_message_to_shard(
-        sub_transaction.txn_shard_id,
-        "released"+MESSAGE_DATA_SEPARATOR +
-        sub_transaction.txn_id + MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
-    )
+    print("Shard "+str(shard_id)+" released account "+sub_transaction.account_no)
 
 
 def check_lock(account_number, txn_id, sub_txn_id, txn_timestamp):
@@ -327,7 +339,7 @@ def connect_to_leader(leader_shard_id, port):
 def decode_response_from_server(client_socket):
     try:
         response_list = client_socket.recv(
-            2048).decode().split(MESSAGE_SEPARATOR)
+            4096).decode().split(MESSAGE_SEPARATOR)
         response_list.pop()
         return response_list
     except:
