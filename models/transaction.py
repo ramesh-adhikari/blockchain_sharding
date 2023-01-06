@@ -31,6 +31,29 @@ class Transaction:
         temporary_pool_txn_path = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
         t_instance = Transaction()
         t_instance.delete_row_by_txn_id(temporary_pool_txn_path,sub_txn_id,'TRANSACTION')
+
+    def remove_transaction_from_commited_transaction(shard_id, sub_txn_id):
+        temporary_pool_txn_path = FilesGenerator().get_txn_file_path(shard_id, 'commited')
+        t_instance = Transaction()
+        t_instance.delete_row_by_txn_id(temporary_pool_txn_path,sub_txn_id,'TRANSACTION')
+
+    def is_commited_transaction(shard_id, sub_txn_id):
+        abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'committed')
+        #TODO Check pd read implementation
+        data = None
+        while True:
+            try:
+                data = pd.read_csv(abs_file_path)
+                break
+            except:
+                time.sleep(5/1000)
+            
+        selected_row = data.loc[(data["SUB_TXN_ID"] == sub_txn_id)]
+        if(len(selected_row)>0):
+            return True
+        else:
+            return False
+        
         
     
     def get_transactions_from_transaction_pool(shard_id):
@@ -177,7 +200,14 @@ class Transaction:
         if(TRANSACTION_TYPE=='LOCK'):
             shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'lock')
             shard_file_directory = os.path.abspath(os.curdir)+shard_file_path
-            data_frame = pd.read_csv(shard_file_directory)
+            #TODO Check pd read implementation
+            data_frame = None
+            while True:
+                try:
+                    dataframe = pd.read_csv(shard_file_directory)
+                    break
+                except:
+                    time.sleep(5/1000)
             account_exist = data_frame.loc[data_frame['ACCOUNT_NUMBER'] == account_number].count()
             if(account_exist['ACCOUNT_NUMBER']>0):
                 return True
@@ -188,7 +218,14 @@ class Transaction:
     def remove_account_lock(shard_id, account_number):
         if(TRANSACTION_TYPE=='LOCK'):
             abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'lock')
-            account = pd.read_csv(abs_file_path)
+            #TODO Check pd read implementation
+            account = None
+            while True:
+                try:
+                    account = pd.read_csv(abs_file_path)
+                    break
+                except:
+                    time.sleep(5/1000)
             account.drop(account.index[(account["ACCOUNT_NUMBER"] == account_number)],axis=0,inplace=True)
             account.to_csv(abs_file_path,index=False)
         else:
@@ -216,8 +253,8 @@ class Transaction:
                     time.sleep(5/1000)
 
             #TODO Do we really need sub_txn_id here?
-            # snapshot.drop(snapshot.index[(snapshot["SUB_TXN_ID"] == sub_txn_id) & (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
-            snapshot.drop(snapshot.index[ (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
+            snapshot.drop(snapshot.index[(snapshot["SUB_TXN_ID"] == sub_txn_id) & (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
+            # snapshot.drop(snapshot.index[ (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
             snapshot.to_csv(abs_file_path,index=False)
         else:
             return

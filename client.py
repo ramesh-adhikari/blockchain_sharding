@@ -65,24 +65,24 @@ def check_balance(response):
 
 def update_balance(response):
     sub_transaction: SubTransaction = SubTransaction.from_message(response)
-    if check_snapshot(sub_transaction):
-        check_lock(sub_transaction.account_no, sub_transaction.txn_id,
-                   sub_transaction.sub_txn_id, sub_transaction.txn_timestamp)
-        success = Transaction.has_amount(
-            sub_transaction.account_no, sub_transaction.amount)
-        if success:
+    success = Transaction.has_amount(
+        sub_transaction.account_no, sub_transaction.amount)
+    if success:
+        if check_snapshot(sub_transaction):
+            check_lock(sub_transaction.account_no, sub_transaction.txn_id,
+                       sub_transaction.sub_txn_id, sub_transaction.txn_timestamp)
             Transaction.append_sub_transaction_to_temporary_file(
                 sub_transaction.txn_id, sub_transaction.sub_txn_id, sub_transaction.account_no, sub_transaction.account_name, sub_transaction.amount, shard_id)
             send_message_to_shard(
                 sub_transaction.txn_shard_id, "vote_commit"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
                 MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
             )
-        else:
-            send_message_to_shard(
-                sub_transaction.txn_shard_id,
-                "vote_abort"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
-                MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
-            )
+    else:
+        send_message_to_shard(
+            sub_transaction.txn_shard_id,
+            "vote_abort"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
+            MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
+        )
 
 
 def commit_transaction(response):
@@ -102,8 +102,16 @@ def commit_transaction(response):
 def abort_transaction(response):
     sub_transaction: SubTransaction = SubTransaction.from_message(response)
     if (sub_transaction.type == "abort_update"):
-        Transaction.remove_transaction_from_temporary_transaction(
-            shard_id, sub_transaction.sub_txn_id)
+        if (Transaction.is_commited_transaction(shard_id, sub_transaction.sub_txn_id)):
+            Transaction.remove_transaction_from_commited_transaction(
+                shard_id,
+                sub_transaction.sub_txn_id
+            )
+        else:
+            Transaction.remove_transaction_from_temporary_transaction(
+                shard_id,
+                sub_transaction.sub_txn_id
+            )
     send_message_to_shard(
         sub_transaction.txn_shard_id,
         "aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
@@ -116,6 +124,7 @@ def abort_transaction(response):
 def abort_rollback_transaction(response):
     sub_transaction: SubTransaction = SubTransaction.from_message(response)
     if (sub_transaction.type == "rollback_update"):
+        # TODO remove from commited if transaction is commited
         Transaction.remove_transaction_from_temporary_transaction(
             shard_id, sub_transaction.sub_txn_id)
     send_message_to_shard(
@@ -199,6 +208,11 @@ def check_snapshot(sub_transaction: SubTransaction):
                 int(snapshot[4]),
                 "vote_rollback"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
                 MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
+            )
+            Transaction.remove_snapshot(
+                int(snapshot[0]),
+                snapshot[2],
+                snapshot[3],
             )
             Transaction.append_data_to_snapshot(
                 shard_id,

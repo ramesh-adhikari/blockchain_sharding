@@ -17,6 +17,7 @@ def init_shards():
     global start_time, leaders
     leaders.clear()
     port = INITAIL_PORT
+
     for shard in SHARDS:
         if (shard[1]):  # is_leader
             p = multiprocessing.Process(

@@ -35,7 +35,7 @@ def handle_response_from_client(socket, response):
     elif (response.startswith("aborted")):
         handle_aborted()
     elif (response.startswith("vote_rollback")):
-        handle_vote_rollback(response)
+        handle_vote_rollback()
     elif (response.startswith("rollbacked")):
         handle_rollbacked()
 
@@ -95,6 +95,7 @@ def handle_committed():
             print(
                 "Leader shard "+str(shard_id)+" received commited message from all shards for transaction "+sub_transactions[0].txn_id+". Processing next transaction .....")
             update_state(State.NONE)
+            send_release_message()
             process_next_transaction_in_new_thread()
 
 
@@ -108,13 +109,11 @@ def handle_aborted():
             print(
                 "Leader shard "+str(shard_id)+" received aborted message from all shards for transaction "+sub_transactions[0].txn_id+". Processing next transaction .....")
             update_state(State.NONE)
+            send_release_message()
             process_next_transaction_in_new_thread()
 
 
-def handle_vote_rollback(response):
-    data = response.split(MESSAGE_DATA_SEPARATOR)
-    txn_id = data[2]
-    # TODO send rollback to related transaction
+def handle_vote_rollback():
     send_rollback_message()
 
 
@@ -140,10 +139,13 @@ def handle_rollbacked():
             print(
                 "Leader shard "+str(shard_id)+" received abort rollbacked message from all shards for transaction "+sub_transactions[0].txn_id+". Processing next transaction .....")
             update_state(State.NONE)
+            send_release_message()
             process_next_transaction_in_new_thread()
 
 
 def send_release_message():
+    if (TRANSACTION_TYPE != 'OUR_PROTOCOL'):
+        return
     for sub_transation in sub_transactions:
         send_message_to_shard(
             sub_transation.shard_id,
@@ -157,7 +159,6 @@ def update_state(_state: State):
 
 
 def process_next_transaction_in_new_thread():
-    send_release_message()
     start_new_thread(
         process_transaction,
         (Transaction.get_transactions_from_transaction_pool(shard_id),)
