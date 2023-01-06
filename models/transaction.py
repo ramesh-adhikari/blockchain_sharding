@@ -212,9 +212,11 @@ class Transaction:
     # Lock
     def append_account_to_lock_file(shard_id, account_number, timestamp):
         if(TRANSACTION_TYPE=='LOCK'):
+            print("Locking "+account_number)
             shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'lock')
             data = [account_number,timestamp]
             File.append_data(shard_file_path, data)
+            print("Locked "+account_number)
         else:
             return
     
@@ -226,7 +228,7 @@ class Transaction:
             data_frame = None
             while True:
                 try:
-                    dataframe = pd.read_csv(shard_file_directory)
+                    data_frame = pd.read_csv(shard_file_directory)
                     break
                 except:
                     time.sleep(5/1000)
@@ -239,6 +241,7 @@ class Transaction:
 
     def remove_account_lock(shard_id, account_number):
         if(TRANSACTION_TYPE=='LOCK'):
+            print("Unlocking "+account_number)
             abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'lock')
             #TODO Check pd read implementation
             account = None
@@ -250,6 +253,7 @@ class Transaction:
                     time.sleep(5/1000)
             account.drop(account.index[(account["ACCOUNT_NUMBER"] == account_number)],axis=0,inplace=True)
             account.to_csv(abs_file_path,index=False)
+            print("Unlocked "+account_number)
         else:
             return
         

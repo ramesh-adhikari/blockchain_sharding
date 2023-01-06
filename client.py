@@ -48,9 +48,7 @@ def check_balance(response):
     success = Transaction.has_amount(
         sub_transaction.account_no, sub_transaction.amount)
     if success:
-        if check_snapshot(sub_transaction):
-            check_lock(sub_transaction.account_no, sub_transaction.txn_id,
-                       sub_transaction.sub_txn_id, sub_transaction.txn_timestamp)
+        if check_snapshot(sub_transaction) and check_and_apply_lock(sub_transaction, response):
             send_message_to_shard(
                 sub_transaction.txn_shard_id,
                 "vote_commit"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
@@ -68,13 +66,7 @@ def update_balance(response):
     success = Transaction.has_amount(
         sub_transaction.account_no, sub_transaction.amount)
     if success:
-        if check_snapshot(sub_transaction):
-            check_lock(
-                sub_transaction.account_no,
-                sub_transaction.txn_id,
-                sub_transaction.sub_txn_id,
-                sub_transaction.txn_timestamp
-            )
+        if check_snapshot(sub_transaction) and check_and_apply_lock(sub_transaction, response):
             Transaction.append_sub_transaction_to_temporary_file(
                 sub_transaction.txn_id,
                 sub_transaction.sub_txn_id,
@@ -260,40 +252,51 @@ def release_snapshot(response):
     print("Shard "+str(shard_id)+" released account "+sub_transaction.account_no)
 
 
-def check_lock(account_number, txn_id, sub_txn_id, txn_timestamp):
-    wait_for_lock(account_number)
-    lock_account(account_number, txn_id, sub_txn_id, txn_timestamp)
-
-
-def wait_for_lock(account_number):
+def check_and_apply_lock(sub_transaction: SubTransaction, response):
     if (TRANSACTION_TYPE != 'LOCK'):
-        return
-    while True:
-        locked = Transaction.is_account_locked(shard_id, account_number)
-        print("Account "+account_number+" is currenlty locked in shard "+str(shard_id) +
-              ". Will retry in "+str(ACCOUNT_LOCK_RETRY_TIME_MS)+" millisecond.")
-        if (locked):
-            time.sleep(ACCOUNT_LOCK_RETRY_TIME_MS/1000)
-            continue
-        else:
-            break
+        return True
+    locked = Transaction.is_account_locked(
+        shard_id, sub_transaction.account_no)
+    if (locked):
+        start_new_thread(
+            retry_message_handling,
+            (sub_transaction.account_no, response,)
+        )
+        return False
+    else:
+        lock_account(sub_transaction)
+        return True
 
 
-def lock_account(account_number, txn_id, sub_txn_id, txn_timestamp):
-    if (TRANSACTION_TYPE != 'LOCK'):
-        return
+def lock_account(sub_transaction: SubTransaction):
     time.sleep(100/1000)
-    print("Account lock applied to "+account_number+" in shard " +
-          str(shard_id)+" txn id : "+txn_id+" sub txn id : "+sub_txn_id)
+    print("Lock applied to account "+sub_transaction.account_no+" in shard " +
+          str(shard_id)+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
+          MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
     Transaction.append_account_to_lock_file(
-        shard_id, account_number, txn_timestamp)
+        shard_id,
+        sub_transaction.account_no,
+        sub_transaction.txn_timestamp
+    )
 
 
 def release_lock(account_number):
     if (TRANSACTION_TYPE != 'LOCK'):
         return
-    print("Account lock released to "+account_number+" in shard "+str(shard_id))
+    print("Lock released from account " +
+          account_number+" in shard "+str(shard_id))
     Transaction.remove_account_lock(shard_id, account_number)
+
+
+def retry_message_handling(account_number, response):
+    print(
+        "Account "+account_number +
+        " is currenlty locked in shard "+str(shard_id) +
+        "Retry request will be made in " +
+        str(ACCOUNT_LOCK_RETRY_TIME_MS)+" milliseconds."
+    )
+    time.sleep(ACCOUNT_LOCK_RETRY_TIME_MS/1000)
+    handle_response_from_server(response)
 
 
 def init_client(_shard_id, _leaders):
