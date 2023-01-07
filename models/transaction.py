@@ -210,17 +210,17 @@ class Transaction:
     
 
     # Lock
-    def append_account_to_lock_file(shard_id, account_number, timestamp):
+    def append_account_to_lock_file(shard_id, account_number,txn_shard_id, timestamp):
         if(TRANSACTION_TYPE=='LOCK'):
             print("Locking "+account_number)
             shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'lock')
-            data = [account_number,timestamp]
+            data = [account_number,txn_shard_id,timestamp]
             File.append_data(shard_file_path, data)
             print("Locked "+account_number)
         else:
             return
     
-    def is_account_locked(shard_id, account_number):
+    def is_account_locked(shard_id,txn_shard_id, account_number):
         if(TRANSACTION_TYPE=='LOCK'):
             shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'lock')
             shard_file_directory = os.path.abspath(os.curdir)+shard_file_path
@@ -231,10 +231,14 @@ class Transaction:
                     data_frame = pd.read_csv(shard_file_directory)
                     break
                 except:
-                    time.sleep(5/1000)
-            account_exist = data_frame.loc[data_frame['ACCOUNT_NUMBER'] == account_number].count()
-            if(account_exist['ACCOUNT_NUMBER']>0):
-                return True
+                    time.sleep(50/1000)
+
+            account = data_frame.loc[data_frame['ACCOUNT_NUMBER'] == account_number]
+            if(len(account)>0):
+                if(account['TRANSACTION_SHARD_ID'] [account.index[0]]==txn_shard_id):
+                    return False
+                else:
+                    return True
             return False  
         else:
             return False
@@ -251,9 +255,12 @@ class Transaction:
                     break
                 except:
                     time.sleep(5/1000)
+            # if ("ACCOUNT_NUMBER" in account.index):
             account.drop(account.index[(account["ACCOUNT_NUMBER"] == account_number)],axis=0,inplace=True)
             account.to_csv(abs_file_path,index=False)
             print("Unlocked "+account_number)
+            # else:
+            #     print("Lock for account "+account_number+" not found in shard "+str(shard_id))
         else:
             return
         

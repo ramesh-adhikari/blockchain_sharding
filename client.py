@@ -99,7 +99,7 @@ def commit_transaction(response):
             "committed"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
             MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
         )
-        release_lock(sub_transaction.account_no)
+        release_lock(sub_transaction.txn_shard_id, sub_transaction.account_no)
 
 
 def abort_transaction(response):
@@ -112,7 +112,7 @@ def abort_transaction(response):
         MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
     )
     release_snapshot(response)
-    release_lock(sub_transaction.account_no)
+    release_lock(sub_transaction.txn_shard_id, sub_transaction.account_no)
 
 
 def abort_rollback_transaction(response):
@@ -125,7 +125,7 @@ def abort_rollback_transaction(response):
         MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
     )
     release_snapshot(response)
-    release_lock(sub_transaction.account_no)
+    release_lock(sub_transaction.txn_shard_id, sub_transaction.account_no)
 
 
 def remove_transaction(sub_transaction: SubTransaction):
@@ -256,7 +256,10 @@ def check_and_apply_lock(sub_transaction: SubTransaction, response):
     if (TRANSACTION_TYPE != 'LOCK'):
         return True
     locked = Transaction.is_account_locked(
-        shard_id, sub_transaction.account_no)
+        shard_id,
+        sub_transaction.txn_shard_id,
+        sub_transaction.account_no
+    )
     if (locked):
         start_new_thread(
             retry_message_handling,
@@ -276,16 +279,18 @@ def lock_account(sub_transaction: SubTransaction):
     Transaction.append_account_to_lock_file(
         shard_id,
         sub_transaction.account_no,
+        sub_transaction.txn_shard_id,
         sub_transaction.txn_timestamp
     )
 
 
-def release_lock(account_number):
+def release_lock(txn_shard_id, account_number):
     if (TRANSACTION_TYPE != 'LOCK'):
         return
     print("Lock released from account " +
           account_number+" in shard "+str(shard_id))
-    Transaction.remove_account_lock(shard_id, account_number)
+    if (Transaction.is_account_locked(shard_id, txn_shard_id, account_number)):
+        Transaction.remove_account_lock(shard_id, account_number)
 
 
 def retry_message_handling(account_number, response):
