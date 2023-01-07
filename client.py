@@ -214,8 +214,8 @@ def check_snapshot(sub_transaction: SubTransaction):
         if (snapshot_timestamp > sub_transaction.txn_timestamp):
             send_message_to_shard(
                 int(snapshot[4]),
-                "vote_rollback"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
-                MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
+                "vote_rollback"+MESSAGE_DATA_SEPARATOR+snapshot[1] +
+                MESSAGE_DATA_SEPARATOR+snapshot[2]
             )
             Transaction.remove_snapshot(
                 int(snapshot[0]),
@@ -244,12 +244,17 @@ def release_snapshot(response):
     if (TRANSACTION_TYPE != 'OUR_PROTOCOL'):
         return True
     sub_transaction: SubTransaction = SubTransaction.from_message(response)
-    Transaction.remove_snapshot(
-        shard_id,
-        sub_transaction.sub_txn_id,
-        sub_transaction.account_no
-    )
-    print("Shard "+str(shard_id)+" released account "+sub_transaction.account_no)
+    if (Transaction.snapshot_exists(shard_id, sub_transaction.account_no, sub_transaction.sub_txn_id)):
+        Transaction.remove_snapshot(
+            shard_id,
+            sub_transaction.sub_txn_id,
+            sub_transaction.account_no
+        )
+        print("Shard "+str(shard_id)+" released account " +
+              sub_transaction.account_no)
+    else:
+        print("Shard "+str(shard_id)+" snapshot does not have account " +
+              sub_transaction.account_no+" "+sub_transaction.sub_txn_id)
 
 
 def check_and_apply_lock(sub_transaction: SubTransaction, response):
