@@ -111,7 +111,7 @@ def abort_transaction(response):
         "aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
         MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
     )
-    release_snapshot(response)
+    # release_snapshot(response)
     release_lock(sub_transaction.txn_shard_id, sub_transaction.account_no)
 
 
@@ -124,7 +124,7 @@ def abort_rollback_transaction(response):
         "rollbacked"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
         MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
     )
-    release_snapshot(response)
+    # release_snapshot(response)
     release_lock(sub_transaction.txn_shard_id, sub_transaction.account_no)
 
 
@@ -214,13 +214,16 @@ def check_snapshot(sub_transaction: SubTransaction):
         if (snapshot_timestamp > sub_transaction.txn_timestamp):
             send_message_to_shard(
                 int(snapshot[4]),
-                "vote_rollback"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
-                MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
+                "vote_rollback"+MESSAGE_DATA_SEPARATOR+snapshot[1] +
+                MESSAGE_DATA_SEPARATOR+snapshot[2]
             )
             Transaction.remove_snapshot(
                 int(snapshot[0]),
+                snapshot[1],
                 snapshot[2],
                 snapshot[3],
+                snapshot[4],
+                snapshot[5]
             )
             Transaction.append_data_to_snapshot(
                 shard_id,
@@ -246,8 +249,11 @@ def release_snapshot(response):
     sub_transaction: SubTransaction = SubTransaction.from_message(response)
     Transaction.remove_snapshot(
         shard_id,
+        sub_transaction.txn_id,
         sub_transaction.sub_txn_id,
-        sub_transaction.account_no
+        sub_transaction.account_no,
+        sub_transaction.txn_shard_id,
+        sub_transaction.txn_timestamp
     )
     print("Shard "+str(shard_id)+" released account "+sub_transaction.account_no)
 

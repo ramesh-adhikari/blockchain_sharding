@@ -268,13 +268,40 @@ class Transaction:
     def append_data_to_snapshot(shard_id, txn_id, sub_txn_id, account_number,txn_shard_id, txn_generated_timestamp):
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
             shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
-            data = [shard_id, txn_id, sub_txn_id, account_number, txn_shard_id, txn_generated_timestamp]
+            data = [shard_id, txn_id, sub_txn_id, account_number, txn_shard_id, txn_generated_timestamp,'ACQUIRE']
             File.append_data(shard_file_path, data)
+            print('Transaction with txn ID: '+ txn_id + 'and sub txn ID: '+sub_txn_id+ 'take snapshot on account '+account_number + ' ACQUIRE' )
         else:
             return
     
-    def remove_snapshot(shard_id, sub_txn_id, account_no):
+    def remove_snapshot(shard_id, txn_id, sub_txn_id, account_no,txn_shard_id,txn_generated_timestamp):
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
+            print('here')
+            shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
+            data = [shard_id, txn_id, sub_txn_id, account_no, txn_shard_id, txn_generated_timestamp,'RELEASED']
+            snapshot = None
+            while True:
+                try:
+                    snapshot = pd.read_csv(os.path.abspath(os.curdir)+shard_file_path)
+                    break
+                except:
+                    time.sleep(5/1000)
+            selected_row = snapshot.loc[(snapshot["ACCOUNT_NUMBER"] == account_no) & (snapshot["SUB_TXN_ID"] == sub_txn_id)].tail(1)
+           
+            if(len(selected_row)):
+                if(selected_row['TYPE'] [selected_row.index[0]]=="ACQUIRE"):
+                    File.append_data(shard_file_path, data)
+                    print('Transaction with txn ID: '+ txn_id + 'and sub txn ID: '+sub_txn_id+ 'remove snapshot on account '+account_no + ' RELEASED' )
+                    return
+                else:
+                    print('Transaction with txn ID: '+ txn_id + 'and sub txn ID: '+sub_txn_id+ 'remove snapshot on account '+account_no + ' ALREADY_RELEASED' )
+                    return
+            else:
+                print('Transaction with txn ID: '+ txn_id + 'and sub txn ID: '+sub_txn_id+ ' tried to remove snapshot on account '+account_no + ' NOT_ACQUIRED_YET' )
+                return
+            
+            return
+
             abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
             #TODO Check pd read implementation
             snapshot = None
@@ -304,16 +331,20 @@ class Transaction:
                 except:
                     time.sleep(5/1000)
                
-            selected_row = snapshot.loc[(snapshot["ACCOUNT_NUMBER"] == account_no)]
+            selected_row = snapshot.loc[(snapshot["ACCOUNT_NUMBER"] == account_no)].tail(1)
+           
             if(len(selected_row)>0):
-                return [
-                            selected_row['SHARD_ID'] [selected_row.index[0]],
-                            selected_row['TXN_ID'] [selected_row.index[0]],
-                            selected_row['SUB_TXN_ID'] [selected_row.index[0]],
-                            selected_row['ACCOUNT_NUMBER'] [selected_row.index[0]],
-                            selected_row['TRANSACTION_SHARD_ID'] [selected_row.index[0]],
-                            selected_row['TRANSACTION_GENERATED_TIMESTAMP'] [selected_row.index[0]],
-                        ]
+                if(selected_row['TYPE'] [selected_row.index[0]]=="RELEASED"):
+                    return None
+                else:
+                    return [
+                                selected_row['SHARD_ID'] [selected_row.index[0]],
+                                selected_row['TXN_ID'] [selected_row.index[0]],
+                                selected_row['SUB_TXN_ID'] [selected_row.index[0]],
+                                selected_row['ACCOUNT_NUMBER'] [selected_row.index[0]],
+                                selected_row['TRANSACTION_SHARD_ID'] [selected_row.index[0]],
+                                selected_row['TRANSACTION_GENERATED_TIMESTAMP'] [selected_row.index[0]],
+                            ]
             else:
                 return None
         else:

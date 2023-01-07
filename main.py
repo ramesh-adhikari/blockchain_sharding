@@ -1,6 +1,7 @@
 import os
 import time
 from generator_scripts.bootstrap import Bootstrap
+from models.transaction import Transaction
 from report import clear_log_files, clear_reports, generate_report
 import sys
 import multiprocessing
