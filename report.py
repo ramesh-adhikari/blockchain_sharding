@@ -48,7 +48,7 @@ def number_of_shard_vs_tsp():
     data = get_data_from_file()
     # print(data[0])
     # exit()
-    type='line'
+    type='lines'
     # x_axis = [1, 2, 3, 4, 5]
     # x_axis = list(data['NUMBER_OF_SHARDS'])
     # lock_based = [10,2,20,40,500]
@@ -144,4 +144,4 @@ def clear_reports():
     File.remove_all_file_inside_directory('/reports')
     print('All report cleared!')
     
-number_of_shard_vs_tsp()
+# number_of_shard_vs_tsp()
