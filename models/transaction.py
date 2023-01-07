@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 import threading
 from utility.file import File
 from utility.shard import get_shard_for_account
@@ -16,7 +17,7 @@ lock = threading.Lock()
 class Transaction:
 
     def append_sub_transaction_to_temporary_file(txn_id, sub_txn_id, account_number, account_name, amount, shard_id):
-        with lock:
+        with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
             print("Appending "+sub_txn_id)  # TODO remove comment
             shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
             timestamp = datetime.datetime.now()
@@ -26,7 +27,7 @@ class Transaction:
             print("Appended "+sub_txn_id)  # TODO remove comment
 
     def move_sub_transaction_to_committed_transaction(shard_id, sub_txn_id):
-        with lock:
+        with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
             print("Moving "+sub_txn_id)  # TODO remove comment
             source_file = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
             destination_file = FilesGenerator().get_txn_file_path(shard_id, 'committed')
@@ -109,36 +110,40 @@ class Transaction:
                 return None
 
     def move_transaction_from_initial_to_temporary_pool(self, shard_id, txn_id):
-        transaction = Transaction()
-        source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
-        destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
-        transaction.move_transaction(source_file, destination_file, txn_id)
+        with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+            transaction = Transaction()
+            source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
+            destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
+            transaction.move_transaction(source_file, destination_file, txn_id)
 
     def move_transaction_from_temporary_to_abort_pool(shard_id, txn_id):
-        transaction = Transaction()
-        source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
-        destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'aborted')
-        transaction = Transaction()
-        transaction.move_transaction(source_file, destination_file, txn_id)
+        with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+            transaction = Transaction()
+            source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
+            destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'aborted')
+            transaction = Transaction()
+            transaction.move_transaction(source_file, destination_file, txn_id)
 
     def move_transaction_from_temporary_to_initial_pool(shard_id, txn_id):
-        transaction = Transaction()
-        source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
-        destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
-        transaction.move_transaction(source_file, destination_file, txn_id)
+        with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+            transaction = Transaction()
+            source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
+            destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
+            transaction.move_transaction(source_file, destination_file, txn_id)
 
     def move_transaction_from_temporary_to_committed_pool(shard_id, txn_id):
-        transaction = Transaction()
-        source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
-        destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'committed')
-        transaction.move_transaction(source_file, destination_file, txn_id)
+        with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+            transaction = Transaction()
+            source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
+            destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'committed')
+            transaction.move_transaction(source_file, destination_file, txn_id)
 
     def remove_transaction_from_temporary_pool(shard_id, txn_id):
-        transaction = Transaction()
-        temporary_pool_txn_path = FilesGenerator(
-        ).get_txn_pool_file_path(shard_id, 'temporary')
-        t_instance = Transaction()
-        t_instance.delete_row_by_txn_id(temporary_pool_txn_path, txn_id)
+        with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+            temporary_pool_txn_path = FilesGenerator(
+            ).get_txn_pool_file_path(shard_id, 'temporary')
+            t_instance = Transaction()
+            t_instance.delete_row_by_txn_id(temporary_pool_txn_path, txn_id)
 
     def has_amount(account_number, amount):
         # check whether the account has sufficient balance or not
@@ -223,13 +228,14 @@ class Transaction:
         transaction.to_csv(abs_file_path, index=False)
 
     # Lock
-    def append_account_to_lock_file(shard_id, account_number, txn_shard_id, timestamp):
+    def append_account_to_lock_file(shard_id, account_number, txn_id, txn_shard_id, timestamp):
         if (TRANSACTION_TYPE == 'LOCK'):
-            print("Locking "+account_number)
-            shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'lock')
-            data = [account_number, txn_shard_id, timestamp]
-            File.append_data(shard_file_path, data)
-            print("Locked "+account_number)
+            with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+                print("Locking "+account_number)
+                shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'lock')
+                data = [account_number, txn_id, txn_shard_id, timestamp]
+                File.append_data(shard_file_path, data)
+                print("Locked "+account_number)
         else:
             return
 
@@ -259,63 +265,99 @@ class Transaction:
 
     def remove_account_lock(shard_id, account_number):
         if (TRANSACTION_TYPE == 'LOCK'):
-            print("Unlocking "+account_number)
-            abs_file_path = os.path.abspath(
-                os.curdir) + FilesGenerator().get_txn_file_path(shard_id, 'lock')
-            # TODO Check pd read implementation
-            account = None
-            while True:
-                try:
-                    account = pd.read_csv(abs_file_path)
-                    break
-                except:
-                    time.sleep(5/1000)
-            # if ("ACCOUNT_NUMBER" in account.index):
-            account.drop(account.index[(
-                account["ACCOUNT_NUMBER"] == account_number)], axis=0, inplace=True)
-            account.to_csv(abs_file_path, index=False)
-            print("Unlocked "+account_number)
-            # else:
-            #     print("Lock for account "+account_number+" not found in shard "+str(shard_id))
+            with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+                abs_file_path = os.path.abspath(
+                    os.curdir) + FilesGenerator().get_txn_file_path(shard_id, 'lock')
+                # TODO Check pd read implementation
+                account = None
+                while True:
+                    try:
+                        account = pd.read_csv(abs_file_path)
+                        break
+                    except:
+                        time.sleep(5/1000)
+                account.drop(account.index[(
+                    account["ACCOUNT_NUMBER"] == account_number)], axis=0, inplace=True)
+                account.to_csv(abs_file_path, index=False)
+        else:
+            return
+
+    def remove_all_account_locks_from_leader_shard(shard_id, txn_shard_id):
+        if (TRANSACTION_TYPE == 'LOCK'):
+            with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+                abs_file_path = os.path.abspath(
+                    os.curdir) + FilesGenerator().get_txn_file_path(shard_id, 'lock')
+                # TODO Check pd read implementation
+                account = None
+                while True:
+                    try:
+                        account = pd.read_csv(abs_file_path)
+                        break
+                    except:
+                        time.sleep(5/1000)
+                account.drop(account.index[(
+                    account["TRANSACTION_SHARD_ID"] == txn_shard_id)], axis=0, inplace=True)
+                account.to_csv(abs_file_path, index=False)
+        else:
+            return
+
+    def remove_all_account_locks_from_leader_shard_except_current_transaction(shard_id, txn_shard_id, txn_id):
+        if (TRANSACTION_TYPE == 'LOCK'):
+            with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+                abs_file_path = os.path.abspath(
+                    os.curdir) + FilesGenerator().get_txn_file_path(shard_id, 'lock')
+                # TODO Check pd read implementation
+                account = None
+                while True:
+                    try:
+                        account = pd.read_csv(abs_file_path)
+                        break
+                    except:
+                        time.sleep(5/1000)
+                account.drop(account.index[(
+                    account["TRANSACTION_SHARD_ID"] == txn_shard_id) & (account["TXN_ID"] != txn_id)], axis=0, inplace=True)
+                account.to_csv(abs_file_path, index=False)
         else:
             return
 
     # version control
     def append_data_to_snapshot(shard_id, txn_id, sub_txn_id, account_number, txn_shard_id, txn_generated_timestamp):
         if (TRANSACTION_TYPE == 'OUR_PROTOCOL'):
-            print("STARTING : Appending snapshot "+account_number +
-                  " "+sub_txn_id)  # TODO Remove comment
-            shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
-            data = [shard_id, txn_id, sub_txn_id, account_number,
-                    txn_shard_id, txn_generated_timestamp]
-            File.append_data(shard_file_path, data)
-            print("COMPLETE : Appending snapshot "+account_number +
-                  " "+sub_txn_id)  # TODO Remove comment
+            with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+                print("STARTING : Appending snapshot "+account_number +
+                      " "+sub_txn_id)  # TODO Remove comment
+                shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
+                data = [shard_id, txn_id, sub_txn_id, account_number,
+                        txn_shard_id, txn_generated_timestamp]
+                File.append_data(shard_file_path, data)
+                print("COMPLETE : Appending snapshot "+account_number +
+                      " "+sub_txn_id)  # TODO Remove comment
         else:
             return
 
     def remove_snapshot(shard_id, sub_txn_id, account_no):
         if (TRANSACTION_TYPE == 'OUR_PROTOCOL'):
-            print("Removing snapshot "+account_no +
-                  " "+sub_txn_id)  # TODO Remove comment
-            abs_file_path = os.path.abspath(
-                os.curdir) + FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
-            # TODO Check pd read implementation
-            snapshot = None
-            while True:
-                try:
-                    snapshot = pd.read_csv(abs_file_path)
-                    break
-                except:
-                    time.sleep(5/1000)
+            with lock if LOCK_FILE_TO_MAKE_THREAD_SAFE else nullcontext():
+                print("Removing snapshot "+account_no +
+                      " "+sub_txn_id)  # TODO Remove comment
+                abs_file_path = os.path.abspath(
+                    os.curdir) + FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
+                # TODO Check pd read implementation
+                snapshot = None
+                while True:
+                    try:
+                        snapshot = pd.read_csv(abs_file_path)
+                        break
+                    except:
+                        time.sleep(5/1000)
 
-            # TODO Do we really need sub_txn_id here?
-            snapshot.drop(snapshot.index[(snapshot["SUB_TXN_ID"] == sub_txn_id) & (
-                snapshot["ACCOUNT_NUMBER"] == account_no)], axis=0, inplace=True)
-            # snapshot.drop(snapshot.index[ (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
-            snapshot.to_csv(abs_file_path, index=False)
-            print("Removed snapshot "+account_no+" " +
-                  sub_txn_id)  # TODO Remove comment
+                # TODO Do we really need sub_txn_id here?
+                snapshot.drop(snapshot.index[(snapshot["SUB_TXN_ID"] == sub_txn_id) & (
+                    snapshot["ACCOUNT_NUMBER"] == account_no)], axis=0, inplace=True)
+                # snapshot.drop(snapshot.index[ (snapshot["ACCOUNT_NUMBER"] == account_no)],axis=0,inplace=True)
+                snapshot.to_csv(abs_file_path, index=False)
+                print("Removed snapshot "+account_no+" " +
+                      sub_txn_id)  # TODO Remove comment
         else:
             return
 

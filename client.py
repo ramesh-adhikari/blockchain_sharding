@@ -8,15 +8,17 @@ from models.transaction import Transaction
 
 sockets = []
 leaders = {}
+processing_transactions = {}
 shard_id = 0
 terminate_message_count = 0
 current_leader_shard = 0
 
 
 def handle_response_from_server(response):
-    global terminate_message_count
     if (response.startswith("send_shard_id")):
         send_shard_id(response)
+    elif response.startswith("init"):
+        handle_init(response)
     elif response.startswith("check"):
         check_balance(response)
     elif response.startswith("update"):
@@ -30,7 +32,7 @@ def handle_response_from_server(response):
     elif response.startswith("release"):
         release_snapshot(response)
     elif response.startswith("terminate"):
-        terminate_message_count += 1
+        handle_terminate(response)
 
 
 def send_shard_id(response):
@@ -41,6 +43,13 @@ def send_shard_id(response):
     print("Shard "+str(shard_id)+" will communicate with leader shard " +
           str(leader_shard_id) + " in port "+str(c_port))
     send_message_to_shard(leader_shard_id, "shard_id_"+str(shard_id))
+
+
+def handle_init(response):
+    global processing_transactions
+    data = response.split(MESSAGE_DATA_SEPARATOR)
+    release_all_locks_except_current_transaction(data[1], data[2])
+    processing_transactions[str(data[1])] = data[2]
 
 
 def check_balance(response):
@@ -144,6 +153,21 @@ def remove_transaction(sub_transaction: SubTransaction):
               " in both committed and temporary transactions. Seems like it is yet to be processed.")
 
 
+def handle_terminate(response):
+    global terminate_message_count
+    terminate_message_count += 1
+    leader_shard_id = response.split(MESSAGE_DATA_SEPARATOR)[1]
+    if (TRANSACTION_TYPE == 'LOCK'):
+        Transaction.remove_all_account_locks_from_leader_shard(
+            shard_id,
+            leader_shard_id
+        )
+
+
+def should_terminate_client():
+    return terminate_message_count == len(leaders)
+
+
 def send_message_to_socket(socket, message):
     if (WRITE_LOG_TO_FILE):
         print("Shard " + str(shard_id) +
@@ -186,7 +210,7 @@ def get_port_from_socket(socket):
         _host, _port = socket.getpeername()
         return _port
     except:
-        time.sleep(1/1000)
+        time.sleep(10/1000)
         return get_port_from_socket(socket)
 
 
@@ -266,6 +290,11 @@ def check_and_apply_lock(sub_transaction: SubTransaction, response):
         sub_transaction.account_no
     )
     if (locked):
+        if (str(sub_transaction.txn_shard_id) in processing_transactions):
+            release_all_locks_except_current_transaction(
+                sub_transaction.txn_shard_id,
+                processing_transactions[str(sub_transaction.txn_shard_id)]
+            )
         start_new_thread(
             retry_message_handling,
             (sub_transaction.account_no, response,)
@@ -277,33 +306,55 @@ def check_and_apply_lock(sub_transaction: SubTransaction, response):
 
 
 def lock_account(sub_transaction: SubTransaction):
-    time.sleep(100/1000)
-    print("Lock applied to account "+sub_transaction.account_no+" in shard " +
-          str(shard_id)+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
-          MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
+    if (str(sub_transaction.txn_shard_id) in processing_transactions):
+        if (sub_transaction.txn_id != processing_transactions[str(sub_transaction.txn_shard_id)]):
+            print("Lock requested transaction is different from current processing transaction in shard "+str(shard_id) +
+                  " from leader shard "+str(sub_transaction.txn_shard_id)+" .Ignoring lock request for "+sub_transaction.account_no)
+            return
     Transaction.append_account_to_lock_file(
         shard_id,
         sub_transaction.account_no,
+        sub_transaction.txn_id,
         sub_transaction.txn_shard_id,
         sub_transaction.txn_timestamp
     )
+    print("Lock applied to account "+sub_transaction.account_no+" in shard " +
+          str(shard_id)+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
+          MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id)
 
 
 def release_lock(txn_shard_id, account_number):
     if (TRANSACTION_TYPE != 'LOCK'):
         return
-    print("Lock released from account " +
-          account_number+" in shard "+str(shard_id))
     if (Transaction.is_account_locked(shard_id, txn_shard_id, account_number)):
         Transaction.remove_account_lock(shard_id, account_number)
+    print("Lock released from account " +
+          account_number+" in shard "+str(shard_id))
+
+
+def release_all_locks_except_current_transaction(txn_shard_id, txn_id):
+    if (TRANSACTION_TYPE != 'LOCK'):
+        return
+    Transaction.remove_all_account_locks_from_leader_shard_except_current_transaction(
+        shard_id,
+        txn_shard_id,
+        txn_id
+    )
+    print("All locks applied from "+str(txn_shard_id) +
+          " are released in shard "+str(shard_id) + " except "+txn_id)
 
 
 def retry_message_handling(account_number, response):
+    if (should_terminate_client()):
+        return
+    sub_transaction: SubTransaction = SubTransaction.from_message(response)
     print(
         "Account "+account_number +
         " is currenlty locked in shard "+str(shard_id) +
-        "Retry request will be made in " +
-        str(ACCOUNT_LOCK_RETRY_TIME_MS)+" milliseconds."
+        ". Retry request in " +
+        str(ACCOUNT_LOCK_RETRY_TIME_MS)+" milliseconds." +
+        " Request from "+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
+        MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
     )
     time.sleep(ACCOUNT_LOCK_RETRY_TIME_MS/1000)
     handle_response_from_server(response)
@@ -324,7 +375,7 @@ def init_client(_shard_id, _leaders):
             (leader_shard_id, port,)
         )
 
-    while terminate_message_count != len(leaders):
+    while not should_terminate_client():
         continue
 
     close_sockets()
