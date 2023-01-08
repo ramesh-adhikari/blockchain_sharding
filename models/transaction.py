@@ -80,7 +80,16 @@ class Transaction:
     
     def get_transactions_from_transaction_pool(shard_id):
         txn_pool_initial_file_name = os.path.abspath(os.curdir)+FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
-        data = pd.read_csv(txn_pool_initial_file_name)
+
+        data = None
+        while True:
+            try:
+                data = pd.read_csv(txn_pool_initial_file_name)
+                break
+            except:
+                time.sleep(5/1000)
+
+        # data = pd.read_csv(txn_pool_initial_file_name)
         # sort transaction as per timestamp
         data['TIMESTAMP'] = pd.to_datetime(data['TIMESTAMP'], format="%Y/%m/%d %H:%M")
         data = data.sort_values(by='TIMESTAMP', ascending=True)
@@ -160,7 +169,11 @@ class Transaction:
             selected_rows = transaction.loc[transaction['SUB_TXN_ID'] == txn_id]
         else:
             selected_rows = transaction.loc[transaction['TXN_ID'] == txn_id]
-        
+        if(len(selected_rows)<1):
+            print('row not found in source file '+ source_file+ 'for '+type+ 'with ID '+ txn_id)
+        else:
+            print('row  found in source file '+ source_file+ 'for '+type+ 'with ID '+ txn_id + 'and moves to destination file' + destination_file)
+
         t_instance = Transaction()
         move_data = t_instance.get_move_data(selected_rows, type)
         File.append_data(destination_file,move_data)
@@ -276,7 +289,6 @@ class Transaction:
     
     def remove_snapshot(shard_id, txn_id, sub_txn_id, account_no,txn_shard_id,txn_generated_timestamp):
         if(TRANSACTION_TYPE=='OUR_PROTOCOL'):
-            print('here')
             shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'snapshot')
             data = [shard_id, txn_id, sub_txn_id, account_no, txn_shard_id, txn_generated_timestamp,'RELEASED']
             snapshot = None

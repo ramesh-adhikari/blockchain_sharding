@@ -111,7 +111,7 @@ def abort_transaction(response):
         "aborted"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
         MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
     )
-    # release_snapshot(response)
+    release_snapshot(response)
     release_lock(sub_transaction.txn_shard_id, sub_transaction.account_no)
 
 
@@ -124,7 +124,7 @@ def abort_rollback_transaction(response):
         "rollbacked"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
         MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id
     )
-    # release_snapshot(response)
+    release_snapshot(response)
     release_lock(sub_transaction.txn_shard_id, sub_transaction.account_no)
 
 
