@@ -1,14 +1,15 @@
 from multiprocessing import Value
 
 SHARDS = [(0, True), (1, False), (2, False),
-          (3, False), (4, True)
+          (3, False), (4, True),
+           (5, False), (6, True)
           ]  # (id,is_leader)
 
 TOTAL_NUMBER_OF_TRANSACTIONS = 30
 NUMBER_OF_ACCOUNTS = 10
 DEFAULT_AMOUNT = 2000
 NUMBER_OF_CONDITIONS = 4
-TRANSACTION_TYPE = 'OUR_PROTOCOL'  # NO_LOCK, LOCK, OUR_PROTOCOL
+TRANSACTION_TYPE = 'NO_LOCK'  # NO_LOCK, LOCK, OUR_PROTOCOL
 ACCOUNT_LOCK_RETRY_TIME_MS = 100
 WRITE_LOG_TO_FILE = True
 

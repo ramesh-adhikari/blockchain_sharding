@@ -120,7 +120,8 @@ def handle_aborted():
 
 
 def handle_vote_rollback():
-    send_rollback_message()
+    if(state==State.PREPARING or state==State.COMMITING):
+        send_rollback_message()
 
 
 def send_rollback_message():
