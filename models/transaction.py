@@ -15,34 +15,58 @@ class Transaction:
     
     def append_sub_transaction_to_temporary_file(txn_id, sub_txn_id, account_number, account_name, amount,shard_id):
         print("Appending "+sub_txn_id)
-        shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
+        shard_file_path = FilesGenerator().get_txn_file(shard_id)
         timestamp = datetime.datetime.now()
-        data = [txn_id, sub_txn_id, account_number, account_name, amount, timestamp]
+        data = [txn_id, sub_txn_id, account_number, account_name, amount, timestamp, TRANSACTION_STATE_INITIAL]
         File.append_data(shard_file_path, data)
         print("Appended "+sub_txn_id)
         
+    def append_txn_to_same_file(self, txn_file, sub_txn_id, txn_state_from, txn_state_to):
+        #TODO Check pd read implementation
+        transaction = None
+        while True:
+            try:
+                transaction = pd.read_csv(os.path.abspath(os.curdir)+txn_file)
+                break
+            except:
+                time.sleep(5/1000)
+            
+        selected_rows = transaction.loc[(transaction['SUB_TXN_ID'] == sub_txn_id) & (transaction['STATE']==txn_state_from)]
+        if(len(selected_rows)<1):
+            print('row not found in source file '+ txn_file+ 'with SUB TXN ID '+ sub_txn_id)
+        else:
+            print('row  found in source file '+ txn_file+ 'with SUB TXN  ID '+ sub_txn_id)
+            append_data = [selected_rows['TXN_ID'][selected_rows.index[0]],
+                        selected_rows['SUB_TXN_ID'][selected_rows.index[0]],
+                        selected_rows['ACCOUNT_NUMBER'][selected_rows.index[0]],
+                        selected_rows['ACCOUNT_NAME'][selected_rows.index[0]],
+                        selected_rows['AMOUNT'][selected_rows.index[0]],
+                        selected_rows['TIMESTAMP'][selected_rows.index[0]],
+                        txn_state_to
+                    ]
+            File.append_data(txn_file,append_data)
         
     def move_sub_transaction_to_committed_transaction(shard_id, sub_txn_id):
-        # move pending transaction to committed transaction
+        # appending initial transaction to committed transaction
         print("Moving "+sub_txn_id)
-        source_file = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
-        destination_file = FilesGenerator().get_txn_file_path(shard_id, 'committed')
+        txn_file = FilesGenerator().get_txn_file(shard_id)
         transaction = Transaction()
-        transaction.move_transaction(source_file, destination_file, sub_txn_id, 'TRANSACTION')
+        transaction.append_txn_to_same_file(txn_file, sub_txn_id, TRANSACTION_STATE_INITIAL, TRANSACTION_STATE_COMMITTED)
         print("Moved "+sub_txn_id)
     
     def remove_transaction_from_temporary_transaction(shard_id, sub_txn_id):
-        temporary_pool_txn_path = FilesGenerator().get_txn_file_path(shard_id, 'temporary')
+        print('removing reansaction from temporaty to abort '+sub_txn_id)
+        temporary_pool_txn_path = FilesGenerator().get_txn_file(shard_id)
         t_instance = Transaction()
-        t_instance.delete_row_by_txn_id(temporary_pool_txn_path,sub_txn_id,'TRANSACTION')
+        t_instance.append_txn_to_same_file(temporary_pool_txn_path,sub_txn_id,TRANSACTION_STATE_INITIAL, TRANSACTION_STATE_ABORTED)
 
     def remove_transaction_from_commited_transaction(shard_id, sub_txn_id):
-        temporary_pool_txn_path = FilesGenerator().get_txn_file_path(shard_id, 'commited')
+        temporary_pool_txn_path = FilesGenerator().get_txn_file(shard_id)
         t_instance = Transaction()
-        t_instance.delete_row_by_txn_id(temporary_pool_txn_path,sub_txn_id,'TRANSACTION')
+        t_instance.append_txn_to_same_file(temporary_pool_txn_path,sub_txn_id, TRANSACTION_STATE_COMMITTED, TRANSACTION_STATE_ROLLBACKED)
 
     def is_commited_transaction(shard_id, sub_txn_id):
-        abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'committed')
+        abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file(shard_id)
         #TODO Check pd read implementation
         data = None
         while True:
@@ -52,15 +76,15 @@ class Transaction:
             except:
                 time.sleep(5/1000)
             
-        if("SUB_TXN_ID" in data.index): #prevent key error
-            selected_row = data.loc[(data["SUB_TXN_ID"] == sub_txn_id)]
-            if(len(selected_row)>0):
-                return True
+        selected_row = data.loc[(data["SUB_TXN_ID"] == sub_txn_id) & (data["STATE"] == TRANSACTION_STATE_COMMITTED)]
+        if(len(selected_row)>0):
+            return True
         else:
             return False
+       
 
     def is_temporary_transaction(shard_id, sub_txn_id):
-        abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file_path(shard_id, 'temporary')
+        abs_file_path = os.path.abspath(os.curdir)+ FilesGenerator().get_txn_file(shard_id)
         #TODO Check pd read implementation
         data = None
         while True:
@@ -69,14 +93,13 @@ class Transaction:
                 break
             except:
                 time.sleep(5/1000)
-        if("SUB_TXN_ID" in data.index): #prevent key error
-            selected_row = data.loc[(data["SUB_TXN_ID"] == sub_txn_id)]
-            if(len(selected_row)>0):
-                return True
-        else:
-            return False
-        
-        
+       
+       
+        selected_row = data.loc[(data["SUB_TXN_ID"] == sub_txn_id) & (data["STATE"] == TRANSACTION_STATE_INITIAL)]
+        if(len(selected_row)>0):
+            return True
+        return False
+             
     
     def get_transactions_from_transaction_pool(shard_id):
         txn_pool_initial_file_name = os.path.abspath(os.curdir)+FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
@@ -112,47 +135,52 @@ class Transaction:
         transaction = Transaction()
         source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
         destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
-        transaction.move_transaction(source_file, destination_file, txn_id)
+        transaction.move_txn_in_txn_pool(source_file, destination_file, txn_id)
         
     def move_transaction_from_temporary_to_abort_pool(shard_id, txn_id):
         transaction = Transaction()
         source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
         destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'aborted')
         transaction = Transaction()
-        transaction.move_transaction(source_file, destination_file, txn_id)
+        transaction.move_txn_in_txn_pool(source_file, destination_file, txn_id)
     
     def move_transaction_from_temporary_to_initial_pool(shard_id, txn_id):
         transaction = Transaction()
         source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
         destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'initial')
-        transaction.move_transaction(source_file, destination_file, txn_id)
+        transaction.move_txn_in_txn_pool(source_file, destination_file, txn_id)
     
     def move_transaction_from_temporary_to_committed_pool(shard_id, txn_id):
         transaction = Transaction()
         source_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
         destination_file = FilesGenerator().get_txn_pool_file_path(shard_id, 'committed')
-        transaction.move_transaction(source_file, destination_file, txn_id)
+        transaction.move_txn_in_txn_pool(source_file, destination_file, txn_id)
     
     def remove_transaction_from_temporary_pool(shard_id, txn_id):
         transaction = Transaction()
         temporary_pool_txn_path = FilesGenerator().get_txn_pool_file_path(shard_id, 'temporary')
         t_instance = Transaction()
-        t_instance.delete_row_by_txn_id(temporary_pool_txn_path,txn_id)
+        t_instance.delete_txn_pool_row_by_txn_id(temporary_pool_txn_path,txn_id)
         
     
     def has_amount(account_number, amount):
         # check whether the account has sufficient balance or not
         shard_id = get_shard_for_account(account_number)
-        shard_file_path = FilesGenerator().get_txn_file_path(shard_id, 'committed')
+        shard_file_path = FilesGenerator().get_txn_file(shard_id)
         shard_file_directory = os.path.abspath(os.curdir)+shard_file_path
         data_frame = pd.read_csv(shard_file_directory)
         # sum the amount associated with given account number
-        account_amount = data_frame.loc[data_frame['ACCOUNT_NUMBER'] == account_number, 'AMOUNT'].sum()
+        committed_amount = data_frame.loc[(data_frame['ACCOUNT_NUMBER'] == account_number) & (data_frame['STATE'] == TRANSACTION_STATE_COMMITTED), 'AMOUNT'].sum()
+        rollbacked_amount = data_frame.loc[(data_frame['ACCOUNT_NUMBER'] == account_number) & (data_frame['STATE'] == TRANSACTION_STATE_ROLLBACKED), 'AMOUNT'].sum()
+        account_amount = int(committed_amount)-int(rollbacked_amount)
         if(int(account_amount)>=int(amount)):
+            print('enough amount committed amount '+str(committed_amount)+' rollbacked amount '+str(rollbacked_amount))
             return True
-        return False    
+        else:
+            print('not sufficient balance')
+            return False    
     
-    def move_transaction(self, source_file, destination_file, txn_id, type='TRANSACTION_POOL'):
+    def move_txn_in_txn_pool(self, source_file, destination_file, txn_id):
         source_file = source_file
         destination_file = destination_file
 
@@ -164,46 +192,28 @@ class Transaction:
                 break
             except:
                 time.sleep(5/1000)
-
-        if(type=='TRANSACTION'):
-            selected_rows = transaction.loc[transaction['SUB_TXN_ID'] == txn_id]
+       
+        selected_rows = transaction.loc[transaction['TXN_ID'] == txn_id]
+        if(len(selected_rows)>0):
+            print('row  found in source file '+ source_file+ 'with ID '+ txn_id + 'and moves to destination file' + destination_file)
+            t_instance = Transaction()
+            move_data = t_instance.get_move_data(selected_rows)
+            File.append_data(destination_file,move_data)
+            t_instance.delete_txn_pool_row_by_txn_id(source_file,selected_rows['TXN_ID'][selected_rows.index[0]])
         else:
-            selected_rows = transaction.loc[transaction['TXN_ID'] == txn_id]
-        if(len(selected_rows)<1):
-            print('row not found in source file '+ source_file+ 'for '+type+ 'with ID '+ txn_id)
-        else:
-            print('row  found in source file '+ source_file+ 'for '+type+ 'with ID '+ txn_id + 'and moves to destination file' + destination_file)
-
-        t_instance = Transaction()
-        move_data = t_instance.get_move_data(selected_rows, type)
-        File.append_data(destination_file,move_data)
-        
-        # delete row from temporary
-        if(type=='TRANSACTION'):
-            t_instance.delete_row_by_txn_id(source_file,selected_rows['SUB_TXN_ID'][selected_rows.index[0]], type)
-        else:
-            t_instance.delete_row_by_txn_id(source_file,selected_rows['TXN_ID'][selected_rows.index[0]], type)
+            print('row not found in source file '+ source_file+ 'with ID '+ txn_id)
 
         
-    def get_move_data(self, row, type):
-        if(type=='TRANSACTION_POOL'):
+    def get_move_data(self, row):
            return [row['TXN_ID'][row.index[0]],   
                      row['SENDER_ACCOUNT_NUMBER'][row.index[0]],
                      row['RECEIVER_ACCOUNT_NUMBER'][row.index[0]],
                      row['AMOUNT'][row.index[0]],
                      row['CONDITIONS'][row.index[0]],
                      row['TIMESTAMP'][row.index[0]]
-                    ] 
-        elif(type=='TRANSACTION'):
-            return [row['TXN_ID'][row.index[0]],
-                     row['SUB_TXN_ID'][row.index[0]],
-                     row['ACCOUNT_NUMBER'][row.index[0]],
-                     row['ACCOUNT_NAME'][row.index[0]],
-                     row['AMOUNT'][row.index[0]],
-                     row['TIMESTAMP'][row.index[0]]
-                     ]
+                    ]
     
-    def delete_row_by_txn_id(self, file_path, txn_id, type):
+    def delete_txn_pool_row_by_txn_id(self, file_path, txn_id):
         abs_file_path = os.path.abspath(os.curdir)+file_path
         #TODO Check pd read implementation
         transaction = None
@@ -213,12 +223,7 @@ class Transaction:
                 break
             except:
                 time.sleep(5/1000)
-
-        if(type=='TRANSACTION'):
-            transaction.drop(transaction.index[(transaction["SUB_TXN_ID"] == txn_id)],axis=0,inplace=True)
-        else:
-            transaction.drop(transaction.index[(transaction["TXN_ID"] == txn_id)],axis=0,inplace=True)
-
+        transaction.drop(transaction.index[(transaction["TXN_ID"] == txn_id)],axis=0,inplace=True)
         transaction.to_csv(abs_file_path,index=False)
     
 
@@ -370,3 +375,5 @@ class Transaction:
             return selected_row['TIMESTAMP'][selected_row.index[0]]
         else:
             return
+
+# print(Transaction().is_commited_transaction(0,'SUB_TXN_a7f9f2f6281520ec5f70a6b25d1edd4b88fa1bd033be0dd37e99cabfa42fb4ae'))
