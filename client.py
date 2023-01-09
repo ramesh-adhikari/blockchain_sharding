@@ -70,18 +70,18 @@ def check_balance(response):
 
 def update_balance(response):
     sub_transaction: SubTransaction = SubTransaction.from_message(response)
-    Transaction.append_sub_transaction_to_temporary_file(
+   
+    success = Transaction.has_amount(
+        sub_transaction.account_no, sub_transaction.amount)
+    if success:
+        if check_snapshot(sub_transaction) and check_and_apply_lock(sub_transaction, response):
+            Transaction.append_sub_transaction_to_temporary_file(
                 sub_transaction.txn_id,
                 sub_transaction.sub_txn_id,
                 sub_transaction.account_no,
                 sub_transaction.account_name,
                 sub_transaction.amount, shard_id
             )
-    success = Transaction.has_amount(
-        sub_transaction.account_no, sub_transaction.amount)
-    if success:
-        if check_snapshot(sub_transaction) and check_and_apply_lock(sub_transaction, response):
-            
             send_message_to_shard(
                 sub_transaction.txn_shard_id, "vote_commit"+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id +
                 MESSAGE_DATA_SEPARATOR+sub_transaction.sub_txn_id

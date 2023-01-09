@@ -1,9 +1,11 @@
 from multiprocessing import Value
 
-SHARDS = [(0, True), (1, False), (2, False),(3, True)
+SHARDS = [(0, True), (1, False),
+         (2, False),(3, True),
+         (4, False),(5, True)
           ]  # (id,is_leader)
 
-TOTAL_NUMBER_OF_TRANSACTIONS = 30
+TOTAL_NUMBER_OF_TRANSACTIONS = 100
 NUMBER_OF_ACCOUNTS = 100
 DEFAULT_AMOUNT = 2000
 NUMBER_OF_CONDITIONS = 4

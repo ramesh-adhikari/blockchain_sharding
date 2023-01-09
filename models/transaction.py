@@ -313,16 +313,17 @@ class Transaction:
                     except:
                         time.sleep(5/1000)
                 accounts = account.loc[(account["TYPE"] == LOCK_LOCKED) & (account["TRANSACTION_SHARD_ID"] == int(txn_shard_id))]
-                for account in accounts:
-                    data=[account['SHARD_ID'][account.index[0]],
-                        account['TXN_ID'][account.index[0]],
-                        account['SUB_TXN_ID'][account.index[0]],
-                        account['ACCOUNT_NUMBER'][account.index[0]],
-                        account['TRANSACTION_SHARD_ID'][account.index[0]],
-                        account['TRANSACTION_GENERATED_TIMESTAMP'][account.index[0]],
-                        LOCK_RELEASED
-                    ],
-                    File.append_data(FilesGenerator().get_txn_file_path(shard_id, 'lock'), data)
+                if(len(accounts)>0):
+                    for account in list(accounts):
+                        data=[account['SHARD_ID'][account.index[0]],
+                            account['TXN_ID'][account.index[0]],
+                            account['SUB_TXN_ID'][account.index[0]],
+                            account['ACCOUNT_NUMBER'][account.index[0]],
+                            account['TRANSACTION_SHARD_ID'][account.index[0]],
+                            account['TRANSACTION_GENERATED_TIMESTAMP'][account.index[0]],
+                            LOCK_RELEASED
+                        ],
+                        File.append_data(FilesGenerator().get_txn_file_path(shard_id, 'lock'), data)
         else:
             return
         
@@ -341,16 +342,17 @@ class Transaction:
                         time.sleep(5/1000)
                 
                 accounts = account.loc[(account["TYPE"] == LOCK_LOCKED) & (account["TRANSACTION_SHARD_ID"] == int(txn_shard_id) &(account["TXN_ID"] != txn_id))]
-                for account in accounts:
-                    data=[account['SHARD_ID'][account.index[0]],
-                        account['TXN_ID'][account.index[0]],
-                        account['SUB_TXN_ID'][account.index[0]],
-                        account['ACCOUNT_NUMBER'][account.index[0]],
-                        account['TRANSACTION_SHARD_ID'][account.index[0]],
-                        account['TRANSACTION_GENERATED_TIMESTAMP'][account.index[0]],
-                        LOCK_RELEASED
-                    ],
-                    File.append_data(FilesGenerator().get_txn_file_path(shard_id, 'lock'), data)
+                if(len(accounts)>0):
+                    for account in list(accounts):
+                        data=[account['SHARD_ID'][account.index[0]],
+                            account['TXN_ID'][account.index[0]],
+                            account['SUB_TXN_ID'][account.index[0]],
+                            account['ACCOUNT_NUMBER'][account.index[0]],
+                            account['TRANSACTION_SHARD_ID'][account.index[0]],
+                            account['TRANSACTION_GENERATED_TIMESTAMP'][account.index[0]],
+                            LOCK_RELEASED
+                        ],
+                        File.append_data(FilesGenerator().get_txn_file_path(shard_id, 'lock'), data)
         else:
             return
 
