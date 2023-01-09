@@ -42,7 +42,7 @@ class AccountsAndTransactionGenerator:
                 continue
             
             shard_id = get_shard_for_account(account_number)
-            assign_account_to_shard_file_path = '/storages/shards/'+str(shard_id)+'/transactions/committed/'+TRANSACTION_FILE_NAME
+            assign_account_to_shard_file_path = '/storages/shards/'+str(shard_id)+'/transactions/'+TRANSACTION_FILE_NAME
             acc_generator = AccountsAndTransactionGenerator()
             data = acc_generator.get_account_row_data(account)
             File.append_data(assign_account_to_shard_file_path, data)
@@ -55,7 +55,8 @@ class AccountsAndTransactionGenerator:
                     account[ACCOUNT_INDEX_ACCOUNT_NUMBER],
                     account[ACCOUNT_INDEX_ACCOUNT_NAME],
                     account[ACCOUNT_INDEX_AMOUNT],
-                    datetime.datetime.now()
+                    datetime.datetime.now(),
+                    TRANSACTION_STATE_COMMITTED
                 ]
         return data
                 

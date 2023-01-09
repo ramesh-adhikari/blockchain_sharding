@@ -143,5 +143,8 @@ def get_data_from_file():
 def clear_reports():
     File.remove_all_file_inside_directory('/reports')
     print('All report cleared!')
+
+def clear_log_files():
+    File.remove_all_file_inside_directory('/logs')
     
 # number_of_shard_vs_tsp()
