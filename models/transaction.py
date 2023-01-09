@@ -300,61 +300,6 @@ class Transaction:
         else:
             return
 
-    def remove_all_account_locks_from_leader_shard(shard_id, txn_shard_id):
-        if (TRANSACTION_TYPE == 'LOCK'):
-                abs_file_path = os.path.abspath(
-                    os.curdir) + FilesGenerator().get_txn_file_path(shard_id, 'lock')
-                # TODO Check pd read implementation
-                account = None
-                while True:
-                    try:
-                        account = pd.read_csv(abs_file_path)
-                        break
-                    except:
-                        time.sleep(5/1000)
-                accounts = account.loc[(account["TYPE"] == LOCK_LOCKED) & (account["TRANSACTION_SHARD_ID"] == int(txn_shard_id))]
-                if(len(accounts)>0):
-                    for account in list(accounts):
-                        data=[account['SHARD_ID'][account.index[0]],
-                            account['TXN_ID'][account.index[0]],
-                            account['SUB_TXN_ID'][account.index[0]],
-                            account['ACCOUNT_NUMBER'][account.index[0]],
-                            account['TRANSACTION_SHARD_ID'][account.index[0]],
-                            account['TRANSACTION_GENERATED_TIMESTAMP'][account.index[0]],
-                            LOCK_RELEASED
-                        ],
-                        File.append_data(FilesGenerator().get_txn_file_path(shard_id, 'lock'), data)
-        else:
-            return
-        
-
-    def remove_all_account_locks_from_leader_shard_except_current_transaction(shard_id, txn_shard_id, txn_id):
-        if (TRANSACTION_TYPE == 'LOCK'):
-                abs_file_path = os.path.abspath(
-                    os.curdir) + FilesGenerator().get_txn_file_path(shard_id, 'lock')
-                # TODO Check pd read implementation
-                account = None
-                while True:
-                    try:
-                        account = pd.read_csv(abs_file_path)
-                        break
-                    except:
-                        time.sleep(5/1000)
-                
-                accounts = account.loc[(account["TYPE"] == LOCK_LOCKED) & (account["TRANSACTION_SHARD_ID"] == int(txn_shard_id) &(account["TXN_ID"] != txn_id))]
-                if(len(accounts)>0):
-                    for account in list(accounts):
-                        data=[account['SHARD_ID'][account.index[0]],
-                            account['TXN_ID'][account.index[0]],
-                            account['SUB_TXN_ID'][account.index[0]],
-                            account['ACCOUNT_NUMBER'][account.index[0]],
-                            account['TRANSACTION_SHARD_ID'][account.index[0]],
-                            account['TRANSACTION_GENERATED_TIMESTAMP'][account.index[0]],
-                            LOCK_RELEASED
-                        ],
-                        File.append_data(FilesGenerator().get_txn_file_path(shard_id, 'lock'), data)
-        else:
-            return
 
     # version control
     def append_data_to_snapshot(shard_id, txn_id, sub_txn_id, account_no,txn_shard_id, txn_generated_timestamp):

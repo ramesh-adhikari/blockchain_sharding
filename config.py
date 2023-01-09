@@ -1,17 +1,17 @@
 from multiprocessing import Value
 
 SHARDS = [(0, True), (1, False),
-         (2, False),(3, True),
-         (4, False),(5, True)
+          (2, False), (3, True),
+          (4, False), (5, True)
           ]  # (id,is_leader)
 
 TOTAL_NUMBER_OF_TRANSACTIONS = 100
-NUMBER_OF_ACCOUNTS = 100
+NUMBER_OF_ACCOUNTS = 1000
 DEFAULT_AMOUNT = 2000
 NUMBER_OF_CONDITIONS = 4
-TRANSACTION_TYPE = 'OUR_PROTOCOL'  # NO_LOCK, LOCK, OUR_PROTOCOL
+TRANSACTION_TYPE = 'LOCK'  # NO_LOCK, LOCK, OUR_PROTOCOL
 ACCOUNT_LOCK_RETRY_TIME_MS = 1000
-WRITE_LOG_TO_FILE = True
+WRITE_LOG_TO_FILE = False
 
 LOCK_FILE_TO_MAKE_THREAD_SAFE = True
 
@@ -31,8 +31,6 @@ SNAPSHOT_RELEASED = 'RELEASED'
 
 LOCK_LOCKED = 'LOCKED'
 LOCK_RELEASED = 'RELEASED'
-
-
 
 
 MESSAGE_SEPARATOR = "***"
