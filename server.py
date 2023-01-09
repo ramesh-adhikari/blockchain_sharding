@@ -190,12 +190,18 @@ def process_transaction(transaction):
         for sub_transaction in sub_transactions:
             send_message_to_shard(
                 sub_transaction.shard_id,
+                "init_transaction"+MESSAGE_DATA_SEPARATOR +
+                str(shard_id)+MESSAGE_DATA_SEPARATOR+sub_transaction.txn_id
+            )
+            send_message_to_shard(
+                sub_transaction.shard_id,
                 sub_transaction.to_message()
             )
     else:
         print("Leader shard "+str(shard_id) +
               " processed all transactions from transaction pool.")
-        send_message_to_all_clients("terminate")
+        send_message_to_all_clients(
+            "terminate"+MESSAGE_DATA_SEPARATOR+str(shard_id))
         terminate_transaction_processing = True
         close_server_socket()
 
