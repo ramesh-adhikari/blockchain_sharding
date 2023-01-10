@@ -7,6 +7,7 @@ import sys
 import string
 import random
 from random import choice, randrange
+import time
 
 from utility.shard import get_number_of_leader_shards, get_shard_for_account
 
@@ -67,6 +68,7 @@ class AccountsAndTransactionGenerator:
         # and append this created transaction to transactionpool
         tmp_account_save_file_path = '/storages/GENERATED_ACCOUNTS.CSV'
         for nt in range(int(TOTAL_NUMBER_OF_TRANSACTIONS/get_number_of_leader_shards())):
+                time.sleep(50/1000)
                 # print("Generated transaction pool for shard: "+str(shard_id))
                 data = File.open_file(tmp_account_save_file_path)
                 random_upper_bound=NUMBER_OF_ACCOUNTS-1
